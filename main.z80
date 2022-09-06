@@ -1,0 +1,46 @@
+;; main.z80 
+.include "pc88.z80"
+
+LoadTiles: .macro 
+	DrawTile tno, addr 
+	tno = tno + 1
+	addr = addr + 2
+.endm 
+
+;; Main 
+.org 0x100
+
+main:
+	ld hl, #hw_str
+	ld de, #0xf3c8
+	ld bc, #13
+	ldir
+	
+	di 
+	
+	;DiskLoad 0x6000, 4, 1, 32, 0
+	EnableALU 0
+	ExpandedGVRAM_On
+
+	tno = 0 
+	addr = 0xc000 
+	.rept 24
+	LoadTiles
+	.endm  
+	
+	DisableALU 0
+	ExpandedGVRAM_Off
+
+loop:
+	jr loop
+
+hw_str:
+	.asciz "Hello World!"
+
+.include "draw.z80"
+.include "disk.z80"
+
+;;;;
+;; Gfx 
+tileset: 
+	.incbin "tileset.bin"

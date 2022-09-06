@@ -1,0 +1,66 @@
+;; pc88.z80
+
+;; Defines 
+#define ALU_MODE_CTRL 0x32
+#define EXPANDED_ALU_CTRL 0x34 
+#define EXPANDED_GVRAM_CTRL 0x35
+
+#define bit0 #(1<<0)
+#define bit1 #(1<<1)
+#define bit2 #(1<<2)
+#define bit3 #(1<<3)
+#define bit4 #(1<<4)
+#define bit5 #(1<<5)
+#define bit6 #(1<<6)
+#define bit7 #(1<<7)
+
+;; Macros 
+DiskLoad: .macro Dst, Trk, Sec, Len, Drv
+	ld hl, &Dst        
+    ld de, #((&Trk << 8) | &Sec)  
+    ld bc, #((&Len << 8) | &Drv) 
+	call DISK_Load 
+.endm
+
+Downshift4: .macro 
+	srl a 
+	srl a 
+	srl a 
+	srl a 
+.endm 
+
+EnableALU: .macro Fmem 
+	ld c, ALU_MODE_CTRL
+	ld a, #(0xc9 | (&Fmem << 4))
+	out (c), a 
+.endm 
+
+DisableALU: .macro Fmem 
+	ld c, ALU_MODE_CTRL
+	ld a, #(0x89 | (&Fmem << 4))
+	out (c), a 
+.endm 
+
+SetIOReg: .macro Reg, Val 
+	ld c, &Reg 
+	ld a, &Val 
+	out (c), a 
+.endm 
+
+ExpandedGVRAM_Copy_On: .macro 
+	SetIOReg EXPANDED_GVRAM_CTRL, #(0x80 | bit4)
+.endm
+
+ExpandedGVRAM_On: .macro 
+	SetIOReg EXPANDED_GVRAM_CTRL, #(0x80)
+.endm
+
+ExpandedGVRAM_Off: .macro 
+	SetIOReg EXPANDED_GVRAM_CTRL, #(0x0)
+.endm
+
+DrawTile: .macro TileNo, Dest
+	ld de,&Dest
+	ld hl,#(tileset + (64*&TileNo))
+	call DRAW_TileFromDisk
+.endm

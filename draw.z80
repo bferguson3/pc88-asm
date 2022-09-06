@@ -1,0 +1,131 @@
+;; draw.z80 
+
+;; Function defs 
+DRAW_TileFromDisk:
+.rept 3
+	push de 
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	inc de 
+	ld bc,#4
+	add hl,bc 
+	push de
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	ld bc,#4
+	add hl,bc 
+	ex de,hl 
+	ld bc,#79
+	add hl,bc 
+	ex de,hl 
+	push de 
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	inc de 
+	ld bc,#4 
+	add hl,bc 
+	push de 
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	ld bc,#4 
+	add hl,bc 
+	ld bc,#79
+	ex de,hl 
+	add hl,bc 
+	ex de,hl 
+.endm
+	push de 
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	inc de 
+	ld bc,#4
+	add hl,bc 
+	push de
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	ld bc,#4
+	add hl,bc 
+	ex de,hl 
+	ld bc,#79
+	add hl,bc 
+	ex de,hl 
+	push de 
+	push hl 
+	call DrawV2ByteFromDisk
+	pop hl 
+	pop de 
+	inc de 
+	ld bc,#4 
+	add hl,bc 
+	call DrawV2ByteFromDisk
+	ret
+
+
+DrawV2ByteFromDisk:
+; DE target 
+; HL source (4 bytes)
+	ld c, EXPANDED_ALU_CTRL
+	ld a, (hl)
+	Downshift4
+	out (c), a 
+	ld a,(de)
+	and bit7	; pixel 0
+	ld (de),a 
+	ld a, (hl)
+	and #0xf 
+	out (c), a 
+	ld a, (de)
+	and bit6	; pixel 1
+	ld (de),a 
+	inc hl 
+	ld a,(hl)
+	Downshift4
+	out (c),a 
+	ld a,(de)
+	and bit5	; pixel 2
+	ld (de),a 
+	ld a,(hl)
+	and #0xf 
+	out (c),a 
+	ld a,(de)
+	and bit4 	; pixel 3
+	ld (de),a 	
+	inc hl 
+	ld a,(hl)
+	Downshift4
+	out (c), a 
+	ld a, (de)
+	and bit3 	; pixel 4
+	ld (de),a 
+	ld a,(hl)
+	and #0xf 
+	out (c),a 
+	ld a,(de)
+	and bit2 	; pixel 5
+	ld (de),a 
+	inc hl 
+	ld a,(hl)
+	Downshift4
+	out (c),a 
+	ld a,(de)
+	and bit1 	; pixel 6
+	ld (de),a 
+	ld a,(hl)
+	and #0xf 
+	out (c),a 
+	ld a,(de)
+	and bit0 	; pixel 7
+	ld (de),a 
+	ret
