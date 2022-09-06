@@ -1,12 +1,6 @@
 ;; main.z80 
 .include "pc88.z80"
 
-LoadTiles: .macro 
-	DrawTile tno, addr 
-	tno = tno + 1
-	addr = addr + 2
-.endm 
-
 ;; Main 
 .org 0x100
 
@@ -25,7 +19,9 @@ main:
 	tno = 0 
 	addr = 0xc000 
 	.rept 24
-	LoadTiles
+		DrawTile tno, addr 
+		tno = tno + 1
+		addr = addr + 2
 	.endm  
 	
 	DisableALU 0
