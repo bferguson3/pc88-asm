@@ -64,3 +64,14 @@ DrawTile: .macro TileNo, Dest
 	ld hl,#(tileset + (64*&TileNo))
 	call DRAW_TileFromDisk
 .endm
+
+TileToBuffer: .macro Src, Dst
+	ld hl,&Src ; 0xc000
+	ld de,%Dst ; 0xfe80
+	call DRAW_Tile2Buffer
+.endm 
+
+ShiftLeftBC: .macro 
+	sla c 
+	rl b 
+.endm

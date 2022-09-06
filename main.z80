@@ -1,6 +1,9 @@
 ;; main.z80 
 .include "pc88.z80"
 
+;; macros 
+#define map1 0x6000
+
 ;; Main 
 .org 0x100
 
@@ -12,20 +15,71 @@ main:
 	
 	di 
 	
-	;DiskLoad 0x6000, 4, 1, 32, 0
+	; load map1 to 6000h
+	DiskLoad 0x6000, 4, 1, 32, 0
+	
 	EnableALU 0
 	ExpandedGVRAM_On
 
-	tno = 0 
-	addr = 0xc000 
-	.rept 24
-		DrawTile tno, addr 
-		tno = tno + 1
-		addr = addr + 2
-	.endm  
+	; Load in tileset 
+	;tno = 0 
+	;addr = 0xc000 
+	;.rept 24
+	;	DrawTile tno, addr 
+	;	tno = tno + 1
+	;	addr = addr + 2
+	;.endm
+	; shorter:
+	call LoadTiles
+
+	; copy to vram buffer
+	ExpandedGVRAM_Copy_On
+	call BufferTiles
 	
-	DisableALU 0
+	;; Draw Tile From Map Data 
+	ld a,#20
+	ld ($02),a 
+	ld hl,map1 
+	ld bc,40*256	; X tile counter 
+	ld de,0xc000 	; set tile destination
+	.rowloop:
+	push bc 
+	ld a,(hl)	; multiply A by 16 
+	ld c,a 		; a to bc
+	ld b,0
+	ShiftLeftBC
+	ShiftLeftBC
+	ShiftLeftBC
+	ShiftLeftBC ; x 16
+	push hl 
+	ld hl,0xfe80	; add to buffer addr
+	add hl,bc 
+	push de 
+	call DRAW_TileFromBuffer
+	pop de 
+	pop hl 
+	inc hl 			; next tile byte 
+	inc de 
+	inc de 			; 2 bytes to the right 
+	pop bc 
+	djnz .rowloop
+	ld bc,0x280-80
+	ex de,hl 
+	add hl,bc 
+	ex de,hl 
+	ld bc,128-40	; map size: 128 width 
+	add hl,bc 
+	ld a,($02)
+	dec a 
+	ld ($02),a 
+	cp #0
+	ld bc,40*256
+	jp nz,.rowloop 
+
+
 	ExpandedGVRAM_Off
+	DisableALU 0
+	
 
 loop:
 	jr loop
@@ -33,8 +87,76 @@ loop:
 hw_str:
 	.asciz "Hello World!"
 
+;;
 .include "draw.z80"
+;;
 .include "disk.z80"
+
+
+DRAW_TileFromBuffer:
+; HL - vram buffer tile
+; DE - destination draw address 
+	.rept 7
+	ldi
+	ldi 
+	ld bc,#78
+	ex de,hl 
+	add hl,bc 
+	ex de,hl 	; destination += 78
+	.endm 
+	ldi 
+	ldi 
+	ret 
+
+DRAW_Tile2Buffer:
+; DE - vram buffer address
+; HL - tile source in vram
+	.rept 7
+	ldi 
+	ldi 
+	ld bc,#78 
+	add hl,bc 
+	.endm 
+	ldi 
+	ldi 
+	ret 
+;;;;
+
+BufferTiles:
+	ld b,#24
+	ld hl,0xc000
+	ld de,0xfe80 
+	.buffertiles:
+	push bc 
+	push hl 
+	call DRAW_Tile2Buffer
+	pop hl 
+	inc hl
+	inc hl 
+	pop bc 
+	djnz .buffertiles
+	ret 
+;;;;
+
+LoadTiles:
+	ld b,#24
+	ld de,0xc000				; plus 2
+	ld hl,#(tileset)			; plus 64
+	.loadtiles:
+	push bc 
+	push de 
+	push hl 
+	call DRAW_TileFromDisk
+	pop hl 
+	pop de 
+	inc de 
+	inc de 
+	ld bc,#64 
+	add hl,bc 
+	pop bc 
+	djnz .loadtiles
+	ret
+;;;;
 
 ;;;;
 ;; Gfx 
