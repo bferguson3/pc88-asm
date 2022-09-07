@@ -129,3 +129,64 @@ DrawV2ByteFromDisk:
 	and bit0 	; pixel 7
 	ld (de),a 
 	ret
+
+
+COPY_MapWindow2Buffer:
+; HL - Map location (top left corner)
+; DE - buffer location 
+	ld hl,map1
+	push de 
+	ld a,(MapWidth)
+	ld c,a 
+	ld b,0 
+	sbc hl,bc 
+	ld bc,#40
+	add hl,bc 
+	pop de 
+	ld bc,#(20<<8)
+	.mapbuffercopylp:
+	push bc 
+	push hl 
+	ld h,0
+	ld a,(MapWidth)
+	ld l,a 
+	ld bc,#40
+	sbc hl,bc 	
+	pop bc 
+	add hl,bc  	; hl += width-40
+	ld bc,#40
+	ldir 
+	pop bc  
+	djnz .mapbuffercopylp
+	ret
+;;;;
+
+DRAW_TileFromBuffer:
+; HL - vram buffer tile
+; DE - destination draw address 
+	.rept 7
+	ldi
+	ldi 
+	ld bc,#78
+	ex de,hl 
+	add hl,bc 
+	ex de,hl 	; destination += 78
+	.endm 
+	ldi 
+	ldi 
+	ret 
+
+
+DRAW_Tile2Buffer:
+; DE - vram buffer address
+; HL - tile source in vram
+	.rept 7
+	ldi 
+	ldi 
+	ld bc,#78 
+	add hl,bc 
+	.endm 
+	ldi 
+	ldi 
+	ret 
+;;;;

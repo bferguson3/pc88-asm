@@ -3,43 +3,69 @@
 
 ;; macros 
 #define map1 0x6000
+#define map_buffer 0x8000
+#define _endram 0x8320
 
 ;; Main 
 .org 0x100
 
 main:
-	ld hl, #hw_str
-	ld de, #0xf3c8
-	ld bc, #13
-	ldir
+	; Hello World!
+	;ld hl, #hw_str
+	;ld de, #0xf3c8
+	;ld bc, #13
+	;ldir
 	
 	di 
-	
+
 	; load map1 to 6000h
 	DiskLoad 0x6000, 4, 1, 32, 0
+
+	; copy map1 window to buffer 
+	CopyMapWindowToBuffer map1, map_buffer
 	
+	; ALU/Expanded on 
 	EnableALU 0
 	ExpandedGVRAM_On
 
 	; Load in tileset 
-	;tno = 0 
-	;addr = 0xc000 
-	;.rept 24
-	;	DrawTile tno, addr 
-	;	tno = tno + 1
-	;	addr = addr + 2
-	;.endm
-	; shorter:
 	call LoadTiles
 
 	; copy to vram buffer
 	ExpandedGVRAM_Copy_On
 	call BufferTiles
-	
-	;; Draw Tile From Map Data 
+
+	; Fill screen 40x20	
+	call DrawMapWindow
+
+	ExpandedGVRAM_Off
+	DisableALU 0
+
+loop:
+	jr loop
+
+;;;; Strings
+
+hw_str:
+	.asciz "Hello World!"
+
+
+;;; VARIABLES
+MapWidth: .db 128
+
+
+;;
+.include "draw.z80"
+
+;;
+.include "disk.z80"
+
+
+DrawMapWindow:
+	;; Draw Tile From Map --- Buffer 
 	ld a,#20
 	ld ($02),a 
-	ld hl,map1 
+	ld hl,map_buffer
 	ld bc,40*256	; X tile counter 
 	ld de,0xc000 	; set tile destination
 	.rowloop:
@@ -67,60 +93,15 @@ main:
 	ex de,hl 
 	add hl,bc 
 	ex de,hl 
-	ld bc,128-40	; map size: 128 width 
-	add hl,bc 
 	ld a,($02)
 	dec a 
 	ld ($02),a 
 	cp #0
 	ld bc,40*256
 	jp nz,.rowloop 
-
-
-	ExpandedGVRAM_Off
-	DisableALU 0
-	
-
-loop:
-	jr loop
-
-hw_str:
-	.asciz "Hello World!"
-
-;;
-.include "draw.z80"
-;;
-.include "disk.z80"
-
-
-DRAW_TileFromBuffer:
-; HL - vram buffer tile
-; DE - destination draw address 
-	.rept 7
-	ldi
-	ldi 
-	ld bc,#78
-	ex de,hl 
-	add hl,bc 
-	ex de,hl 	; destination += 78
-	.endm 
-	ldi 
-	ldi 
-	ret 
-
-DRAW_Tile2Buffer:
-; DE - vram buffer address
-; HL - tile source in vram
-	.rept 7
-	ldi 
-	ldi 
-	ld bc,#78 
-	add hl,bc 
-	.endm 
-	ldi 
-	ldi 
-	ret 
+	ret
 ;;;;
+
 
 BufferTiles:
 	ld b,#24
@@ -137,6 +118,7 @@ BufferTiles:
 	djnz .buffertiles
 	ret 
 ;;;;
+
 
 LoadTiles:
 	ld b,#24

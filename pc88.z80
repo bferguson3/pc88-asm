@@ -75,3 +75,9 @@ ShiftLeftBC: .macro
 	sla c 
 	rl b 
 .endm
+
+CopyMapWindowToBuffer: .macro Map, Buffer 
+	ld hl,&Map 
+	ld de,&Buffer 
+	call COPY_MapWindow2Buffer 
+.endm 
