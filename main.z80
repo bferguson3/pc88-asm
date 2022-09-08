@@ -2,27 +2,45 @@
 .include "pc88.z80"
 
 ;; macros 
-#define map1 0x6000
-#define map_buffer 0x8000
-#define _endram 0x8320
+
+;; defs
+#define map1 0x6000 ; 128x64, variable
+#define map_buffer 0x8000 ; 40x20
+#define map_backbuffer 0x8320
+#define _endram 0x8640
+
 
 ;; Main 
 .org 0x100
 
 main:
-	; Hello World!
-	;ld hl, #hw_str
-	;ld de, #0xf3c8
-	;ld bc, #13
-	;ldir
-	
 	di 
+
+	; Set irq
+	SetVBL 
+	ld hl,Vblank
+	ld (CRTC_IRQ),hl
+
+	; clear map ram
+	ld hl,map_buffer
+	ld a,0
+	ld b,#0x10
+	.lp1:
+	push bc 
+	ld bc,0
+	.lp2:	
+	ld (hl),a 
+	inc hl 
+	djnz .lp2
+	pop bc 
+	djnz .lp1 
 
 	; load map1 to 6000h
 	DiskLoad 0x6000, 4, 1, 32, 0
 
 	; copy map1 window to buffer 
 	CopyMapWindowToBuffer map1, map_buffer
+	CopyMapWindowToBuffer map1, map_backbuffer
 	
 	; ALU/Expanded on 
 	EnableALU 0
@@ -32,6 +50,7 @@ main:
 	call LoadTiles
 
 	; copy to vram buffer
+	
 	ExpandedGVRAM_Copy_On
 	call BufferTiles
 
@@ -41,8 +60,18 @@ main:
 	ExpandedGVRAM_Off
 	DisableALU 0
 
+	ei 
 loop:
-	jr loop
+	ld a,(vblDone)
+	cp 1
+	jr nz,loop		; idle until draw has occurred
+	xor a 
+	ld (vblDone),a 	; clear draw flag 
+
+	; check input 
+	call CheckInput
+	
+	jp loop 
 
 ;;;; Strings
 
@@ -52,7 +81,7 @@ hw_str:
 
 ;;; VARIABLES
 MapWidth: .db 128
-
+vblDone: .db 0
 
 ;;
 .include "draw.z80"
@@ -61,16 +90,91 @@ MapWidth: .db 128
 .include "disk.z80"
 
 
+CheckInput:
+	; kb4 - reg0, bit 4 
+	ld c,0
+	in a,(c)
+	and #0b00010000
+	jr nz,.kb4_notpressed
+	 
+	
+	.kb4_notpressed:
+	ret 
+;;;;
+
+
+ShiftWindowRight:
+	; for y x 20
+	; for x x 40
+	ld hl,map_buffer+1
+	ld de,map_buffer
+	;ld bc,#39
+	;ldir 
+	ld bc,#(20)
+	.swrl:
+	push bc 
+	inc hl 
+	inc de 
+	ld bc,#39
+	ldir 
+	pop bc 
+	djnz .swrl
+	
+	ret 
+;;;;
+
+
+Vblank:
+	di 
+	push af 
+	push bc 
+	push de 
+	push hl 
+	
+	; vblank code here
+	call ShiftWindowRight
+BRK: JP BRK 
+	EnableALU 0
+	ExpandedGVRAM_Copy_On
+	call DrawMapWindow
+	ExpandedGVRAM_Off
+	DisableALU 0
+	; play music 
+	
+	; draw if ready
+
+	; end vbl
+	ld a,1
+	ld (vblDone),a 
+
+	pop hl 
+	pop de 
+	pop bc 
+	pop af 
+	
+	SetVBL	
+	ei
+	ret
+;;;;
+
+
 DrawMapWindow:
 	;; Draw Tile From Map --- Buffer 
 	ld a,#20
 	ld ($02),a 
 	ld hl,map_buffer
+	ld ix,map_backbuffer
 	ld bc,40*256	; X tile counter 
 	ld de,0xc000 	; set tile destination
 	.rowloop:
 	push bc 
 	ld a,(hl)	; multiply A by 16 
+	cp (ix+0)	; but first, compare with backbuffer
+	jr nz,.drawtile
+	; SKIP
+	;jp .skip
+	.drawtile:
+	ld (ix+0),a ; and if it is different copy to bb
 	ld c,a 		; a to bc
 	ld b,0
 	ShiftLeftBC
@@ -84,9 +188,11 @@ DrawMapWindow:
 	call DRAW_TileFromBuffer
 	pop de 
 	pop hl 
+	.skip:
 	inc hl 			; next tile byte 
 	inc de 
 	inc de 			; 2 bytes to the right 
+	inc ix 
 	pop bc 
 	djnz .rowloop
 	ld bc,0x280-80

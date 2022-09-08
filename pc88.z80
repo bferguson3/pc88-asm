@@ -4,6 +4,8 @@
 #define ALU_MODE_CTRL 0x32
 #define EXPANDED_ALU_CTRL 0x34 
 #define EXPANDED_GVRAM_CTRL 0x35
+#define IRQ_LEVEL_SET 0xe4 
+#define IRQ_MASK 0xe6
 
 #define bit0 #(1<<0)
 #define bit1 #(1<<1)
@@ -13,6 +15,8 @@
 #define bit5 #(1<<5)
 #define bit6 #(1<<6)
 #define bit7 #(1<<7)
+
+#define CRTC_IRQ 0xf302
 
 ;; Macros 
 DiskLoad: .macro Dst, Trk, Sec, Len, Drv
@@ -80,4 +84,9 @@ CopyMapWindowToBuffer: .macro Map, Buffer
 	ld hl,&Map 
 	ld de,&Buffer 
 	call COPY_MapWindow2Buffer 
+.endm 
+
+SetVBL: .macro 	
+	SetIOReg IRQ_LEVEL_SET, 2 
+	SetIOReg IRQ_MASK, 2
 .endm 
