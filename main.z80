@@ -108,15 +108,13 @@ ShiftWindowRight:
 	; for x x 40
 	ld hl,map_buffer+1
 	ld de,map_buffer
-	;ld bc,#39
-	;ldir 
-	ld bc,#(20)
+	ld bc,#(20<<8)
 	.swrl:
 	push bc 
-	inc hl 
-	inc de 
 	ld bc,#39
 	ldir 
+	inc hl 
+	inc de 
 	pop bc 
 	djnz .swrl
 	
@@ -133,16 +131,16 @@ Vblank:
 	
 	; vblank code here
 	call ShiftWindowRight
-BRK: JP BRK 
+
 	EnableALU 0
 	ExpandedGVRAM_Copy_On
 	call DrawMapWindow
 	ExpandedGVRAM_Off
 	DisableALU 0
+	
 	; play music 
 	
-	; draw if ready
-
+	
 	; end vbl
 	ld a,1
 	ld (vblDone),a 
@@ -172,7 +170,7 @@ DrawMapWindow:
 	cp (ix+0)	; but first, compare with backbuffer
 	jr nz,.drawtile
 	; SKIP
-	;jp .skip
+	jr .skip
 	.drawtile:
 	ld (ix+0),a ; and if it is different copy to bb
 	ld c,a 		; a to bc
