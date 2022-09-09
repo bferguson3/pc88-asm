@@ -250,12 +250,12 @@ CRTC_CURY		equ		0				;0-63 カーソルの座標Y
 ;$7338 20行+24KHz	0111 0011 0011 1000
 
 InitCRTC:
-	;ld			a,%00011001				;CRT I/F 同期ビットオン
-	;out			($40),a
-	;call		WaitVBlank
+	ld			a,%00011001				;CRT I/F 同期ビットオン
+	out			($40),a
+	call		WaitVBlank
 
-	;xor			a
-	;out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
+	xor			a
+	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
 
 	ld			a,%10100000
 	out			($68),a					;DMAC: Mode Set(Reset) [AL][TCS][EW][RP][EN3][EN2][EN1][EN0]

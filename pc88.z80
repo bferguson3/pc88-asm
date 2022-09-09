@@ -97,4 +97,5 @@ CRT_OFF: .macro
 	call		WaitVBlank
 	xor			a
 	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
+	
 .endm

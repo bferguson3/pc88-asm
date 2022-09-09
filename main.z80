@@ -36,13 +36,6 @@ main:
 	pop bc 
 	djnz .lp1 
 
-
-	ld			a,%00011001				;CRT I/F 同期ビットオン
-	out			($40),a
-	call		WaitVBlank
-
-	xor			a
-	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
 	call InitCRTC
 
 	; load map1 to 6000h
@@ -64,6 +57,8 @@ main:
 	ExpandedGVRAM_Copy_On
 	call BufferTiles
 
+	call WaitVBlank
+
 	; Fill screen 40x20	
 	call DrawMapWindow
 
@@ -78,8 +73,6 @@ loop:
 	xor a 
 	ld (vblDone),a 	; clear draw flag 
 
-	; check input 
-	call CheckInput
 	
 	jp loop 
 
@@ -101,35 +94,118 @@ vblDone: .db 0
 
 
 CheckInput:
-	; kb4 - reg0, bit 4 
+	; kb6 - reg0, bit 6
+	ld c,0
+	;ld hl,#(0xf3c8+(120*20))
+	ld b,bit6
+	.ipc:
+	in a,(c)
+	and b 
+	;call z,print0
+	;call nz,print1 
+	;sla b 
+	;jr nc,.ipc
+	call z,ShiftWindowRight
+	
 	ld c,0
 	in a,(c)
-	and #0b00010000
-	jr nz,.kb4_notpressed
-	 
-	
-	.kb4_notpressed:
+	ld b,bit4 
+	and b 
+	call z,ShiftWindowLeft
+
+	ret 
+;;;;
+
+print0:
+	push af 
+	ld a,0x30
+	ld (hl),a 
+	inc hl 
+	pop af 
+	ret 
+
+print1:
+	push af 
+	ld a,0x31
+	ld (hl),a 
+	inc hl 
+	pop af 
 	ret 
 ;;;;
 
 
+MapOffsetX: .db 0
+
+
 ShiftWindowRight:
-	; for y x 20
-	; for x x 40
+; no drawing, only the buffer 
+; do during VBL so tiles arent wonky 
+	ld a,(MapOffsetX)
+	inc a 
+	cp #(128-40)		; right-most edge?
+	ret z				; then return 
+	ld (MapOffsetX),a
+; else keep going
+	; shift tiles 0-39 to the left,
 	ld hl,map_buffer+1
-	ld de,map_buffer
-	ld bc,#(20<<8)
+	ld de,map_buffer	; 20 rows 
+	ld bc,#(20<<8)		; win height
 	.swrl:
 	push bc 
-	ld bc,#39
+	ld bc,#39			; win width - 1
 	ldir 
 	inc hl 
 	inc de 
 	pop bc 
 	djnz .swrl
-	
+	; set the flag so we know to draw 
+	ld a,1
+	ld (ScreenShifted),a 
+	; get the new tiles on the right column 
+	ld a,(MapOffsetX)
+	ld e,a 
+	ld d,0
+	ld hl,map1 		; plus MapOffset(16bit) + 39
+	ld bc,39		; window wid - 1
+	xor a 			; clc 
+	adc hl,bc 		; right-most tile 
+	adc hl,de 		; plus mapoffset value
+	ld b,20			; ctr: number of tile rows 
+	ld ix,map_buffer+39	; address of buffer + win widt - 1
+	.riteside:
+	ld a,(hl)		; map1 offset tile 
+	ld (ix+0),a 	; to buffer edge 
+	ld a,(MapWidth)	
+	ld e,a		; map width
+	ld d,0
+	adc hl,de 		; add map width to hl 
+	ld de,40		; add window width to 
+	add ix,de 		; map buffer ptr 
+	djnz .riteside
+
 	ret 
 ;;;;
+
+ShiftWindowLeft:
+	ld a,(MapOffsetX)
+	dec a 
+	cp #0xff		; right-most edge?
+	ret z				; then return 
+	ld (MapOffsetX),a
+; else keep going
+	; set the flag so we know to draw 
+	ld a,1
+	ld (ScreenShifted),a 
+	
+	; shift tiles 1-40 to the right 
+	
+	
+	; get the new tiles on the right column 
+	
+	ret 
+
+
+ScreenShifted: .db 0
 
 
 Vblank:
@@ -139,21 +215,31 @@ Vblank:
 	push de 
 	push hl 
 
-	; wait for the CRTC signal, then 
-	CRT_OFF
+	; check input 
+	call CheckInput
 	; vbl code
-	call ShiftWindowRight
+	;call ShiftWindowRight
 
+	ld a,(ScreenShifted)
+	cp 1
+	jr z,.shiftscreen
+	jr noshift
+	
+	.shiftscreen:
+	xor a 
+	ld (ScreenShifted),a 
 	EnableALU 0
 	ExpandedGVRAM_Copy_On
 	call DrawMapWindow
 	ExpandedGVRAM_Off
 	DisableALU 0
 	
+	noshift:
 	; play music 
 	
 	; reset the screen
-	call InitCRTC
+
+	;call InitCRTC
 	; end vbl
 	ld a,1
 	ld (vblDone),a 
@@ -170,12 +256,12 @@ Vblank:
 
 DrawMapWindow:
 	;; Draw Tile From Map --- Buffer 
-	ld a,#20
+	ld a,#20		; window height
 	ld ($02),a 
 	ld hl,map_buffer
 	ld ix,map_backbuffer
-	ld bc,40*256	; X tile counter 
-	ld de,0xc000 	; set tile destination
+	ld bc,40*256	; X tile counter - window width
+	ld de,0xc000 	; set tile destination - top left window corner
 	.rowloop:
 	push bc 
 	ld a,(hl)	; multiply A by 16 
@@ -205,7 +291,7 @@ DrawMapWindow:
 	inc ix 
 	pop bc 
 	djnz .rowloop
-	ld bc,0x280-80
+	ld bc,0x280-80	; one row of bytes * 8 bytes high 
 	ex de,hl 
 	add hl,bc 
 	ex de,hl 
@@ -213,7 +299,7 @@ DrawMapWindow:
 	dec a 
 	ld ($02),a 
 	cp #0
-	ld bc,40*256
+	ld bc,40*256	; window height
 	jp nz,.rowloop 
 	ret
 ;;;;
@@ -237,6 +323,7 @@ BufferTiles:
 
 
 LoadTiles:
+; loads into vram first 
 	ld b,#24
 	ld de,0xc000				; plus 2
 	ld hl,#(tileset)			; plus 64
