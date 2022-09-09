@@ -1,0 +1,152 @@
+; window.z80 
+
+
+DrawMapWindow:
+	;; Draw Tile From Map --- Buffer 
+	ld a,#20		; window height
+	ld ($02),a 
+	ld hl,map_buffer
+	ld ix,map_backbuffer
+	ld bc,40*256	; X tile counter - window width
+	ld de,0xc000 	; set tile destination - top left window corner
+	.rowloop:
+	push bc 
+	ld a,(hl)	; multiply A by 16 
+	cp (ix+0)	; but first, compare with backbuffer
+	jr nz,.drawtile
+	; SKIP
+	jr .skip
+	.drawtile:
+	ld (ix+0),a ; and if it is different copy to bb
+	ld c,a 		; a to bc
+	ld b,0
+	ShiftLeftBC
+	ShiftLeftBC
+	ShiftLeftBC
+	ShiftLeftBC ; x 16
+	push hl 
+	ld hl,0xfe80	; add to buffer addr
+	add hl,bc 
+	push de 
+	call DRAW_TileFromBuffer
+	pop de 
+	pop hl 
+	.skip:
+	inc hl 			; next tile byte 
+	inc de 
+	inc de 			; 2 bytes to the right 
+	inc ix 
+	pop bc 
+	djnz .rowloop
+	ld bc,0x280-80	; one row of bytes * 8 bytes high 
+	ex de,hl 
+	add hl,bc 
+	ex de,hl 
+	ld a,($02)
+	dec a 
+	ld ($02),a 
+	cp #0
+	ld bc,40*256	; window height
+	jp nz,.rowloop 
+	ret
+;;;;
+
+
+
+ShiftWindowRight:
+; no drawing, only the buffer 
+; do during VBL so tiles arent wonky 
+	ld a,(MapOffsetX)
+	inc a 
+	cp #(128-40)		; right-most edge?
+	ret z				; then return 
+	ld (MapOffsetX),a
+; else keep going
+	; shift tiles 0-39 to the left,
+	ld hl,map_buffer+1
+	ld de,map_buffer	; 20 rows 
+	ld bc,#(20<<8)		; win height
+	.swrl:
+	push bc 
+	ld bc,#39			; win width - 1
+	ldir 
+	inc hl 
+	inc de 
+	pop bc 
+	djnz .swrl
+	; set the flag so we know to draw 
+	ld a,1
+	ld (ScreenShifted),a 
+	; get the new tiles on the right column 
+	ld a,(MapOffsetX)
+	ld e,a 
+	ld d,0
+	ld hl,map1 		; plus MapOffset(16bit) + 39
+	ld bc,39		; window wid - 1
+	xor a 			; clc 
+	adc hl,bc 		; right-most tile 
+	adc hl,de 		; plus mapoffset value
+	ld b,20			; ctr: number of tile rows 
+	ld ix,map_buffer+39	; address of buffer + win widt - 1
+	.riteside:
+	ld a,(hl)		; map1 offset tile 
+	ld (ix+0),a 	; to buffer edge 
+	ld a,(MapWidth)	
+	ld e,a		; map width
+	ld d,0
+	adc hl,de 		; add map width to hl 
+	ld de,40		; add window width to 
+	add ix,de 		; map buffer ptr 
+	djnz .riteside
+
+	ret 
+;;;;
+
+
+ShiftWindowLeft:
+	ld a,(MapOffsetX)
+	dec a 
+	cp #0xff		; right-most edge?
+	ret z				; then return 
+	ld (MapOffsetX),a
+; else keep going
+	; set the flag so we know to draw 
+	ld a,1
+	ld (ScreenShifted),a 
+	
+	; shift tiles 0-39 to the right 
+	ld hl,map_backbuffer
+	ld de,map_buffer+1
+	ld b,#WINDOW_HEIGHT
+	.swll: ; shift window left loop 
+	push bc 
+	ld bc,#(WINDOW_WIDTH-1)	; 39
+	ldir 	; one row shift 
+	inc hl 
+	inc de  ; +1 to skip top right tile 
+	pop bc  ; row ctr 
+	djnz .swll 
+	
+	; get the new tiles on the leftmost column 
+	ld a,(MapOffsetX)
+    ld e,a 
+    ld d,0
+    ld hl,map1 
+    ;ld bc,0
+    xor a 
+    add hl,de   ; src: map1 + x offset 
+    ld b,WINDOW_HEIGHT 
+    ld ix,map_buffer    ; target 
+    .lside:
+    ld a,(hl)
+    ld (ix+0),a 
+    ld a,(MapWidth)
+    ld e,a 
+    ;ld d,0 
+    add hl,de           ; hl += mapwidth 
+    ld de,WINDOW_WIDTH
+    add ix,de 
+    djnz .lside 
+
+	ret 
+;;;;

@@ -99,3 +99,19 @@ CRT_OFF: .macro
 	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
 	
 .endm
+
+ClearRam: .macro Start, Pages
+	ld hl,&Start
+	ld a,0
+	ld b,#(&Pages)
+	.lp1:
+	push bc 
+	ld bc,0
+	.lp2:	
+	ld (hl),a 
+	inc hl 
+	djnz .lp2
+	pop bc 
+	djnz .lp1 
+.endm 
+
