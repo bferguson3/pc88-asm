@@ -90,3 +90,11 @@ SetVBL: .macro
 	SetIOReg IRQ_LEVEL_SET, 2 
 	SetIOReg IRQ_MASK, 2
 .endm 
+
+CRT_OFF: .macro
+	ld			a,%00011001				;CRT I/F 同期ビットオン
+	out			($40),a
+	call		WaitVBlank
+	xor			a
+	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
+.endm

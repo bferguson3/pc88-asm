@@ -21,10 +21,11 @@ main:
 	ld hl,Vblank
 	ld (CRTC_IRQ),hl
 
-	; clear map ram
-	ld hl,map_buffer
+
+	; clear ram thru 0xbfff
+	ld hl,0x8000
 	ld a,0
-	ld b,#0x10
+	ld b,#0x3f
 	.lp1:
 	push bc 
 	ld bc,0
@@ -35,12 +36,21 @@ main:
 	pop bc 
 	djnz .lp1 
 
+
+	ld			a,%00011001				;CRT I/F 同期ビットオン
+	out			($40),a
+	call		WaitVBlank
+
+	xor			a
+	out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
+	call InitCRTC
+
 	; load map1 to 6000h
 	DiskLoad 0x6000, 4, 1, 32, 0
 
 	; copy map1 window to buffer 
 	CopyMapWindowToBuffer map1, map_buffer
-	CopyMapWindowToBuffer map1, map_backbuffer
+	;CopyMapWindowToBuffer map1, map_backbuffer
 	
 	; ALU/Expanded on 
 	EnableALU 0
@@ -128,8 +138,10 @@ Vblank:
 	push bc 
 	push de 
 	push hl 
-	
-	; vblank code here
+
+	; wait for the CRTC signal, then 
+	CRT_OFF
+	; vbl code
 	call ShiftWindowRight
 
 	EnableALU 0
@@ -140,7 +152,8 @@ Vblank:
 	
 	; play music 
 	
-	
+	; reset the screen
+	call InitCRTC
 	; end vbl
 	ld a,1
 	ld (vblDone),a 
@@ -154,7 +167,6 @@ Vblank:
 	ei
 	ret
 ;;;;
-
 
 DrawMapWindow:
 	;; Draw Tile From Map --- Buffer 
@@ -243,6 +255,16 @@ LoadTiles:
 	djnz .loadtiles
 	ret
 ;;;;
+
+WaitVBlank:
+    in	    a,($40)
+    and     $20
+    jr      nz,WaitVBlank           ;bit5 一旦ディスプレイサイクルになるまで待つ
+	.wait:
+    in      a,($40)
+    and     $20                     ;bit5 ディスプレイサイクル → VBlank になったら ret  
+    jr      z,.wait
+	ret
 
 ;;;;
 ;; Gfx 

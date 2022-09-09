@@ -190,3 +190,130 @@ DRAW_Tile2Buffer:
 	ldi 
 	ret 
 ;;;;
+
+
+;--------------------------------------------------------------------------------------------------
+;CRTC/DMA INIT  BIOS $6FD1
+;$50:CRTC DATA
+;$51:CRTC COMMAND
+;$64:DMAC Ch.2 ADDRESS
+;$65:DMAC Ch.2 Terminal Count
+;$68:DMAC Mode Set
+;$40:bit3 CRT I/F Sync Control (CLDS)
+
+TVRAM			equ		0xf3c8;$C000	;Text VRAM start addr
+
+CRTC_CB			equ		1				;0=DMA burst 1=DMA character (fixed to 1)
+CRTC_WIDTH		equ		80				;2-80 画面の桁数(設定時-2）
+CRTC_BLINK		equ		%10				;%00=16,32 %01=32,64 %10=48,96 %11=64,128 カーソル点滅間隔,アトリビュート点滅間隔
+CRTC_HEIGHT		equ		25				;1-64 画面の行数(設定時-1)
+CRTC_SPLIT		equ		0				;0=通常表示 1=一行おき表示
+CRTC_CURTYPE	equ		%11				;%00=点滅しないアンダーラインカーソル
+										;%01=点滅するアンダーラインカーソル
+										;%10=点滅しない■カーソル
+										;%11=点滅する■カーソル
+
+CRTC_CHRH		equ		8				;3-32 文字の縦ドット数(設定時-1)
+CRTC_CHRH25N	equ		8				;	25行+15KHz=8ドット
+CRTC_CHRH25H	equ		16				;	25行+24KHz=16ドット
+CRTC_CHRH20N	equ		10				;	20行+15KHz=10ドット
+CRTC_CHRH20H	equ		20				;	20行+24KHz=20ドット
+
+CRTC_VBH		equ		7				;1-8 (設定時-1)垂直帰線の行数
+CRTC_VBH25N		equ		7				;	25行+15KHz=7行
+CRTC_VBH25H		equ		3				;	25行+24KHz=3行
+CRTC_VBH20N		equ		6				;	20行+15KHz=6行
+CRTC_VBH20H		equ		2				;	20行+24KHz=2行
+
+CRTC_HBW		equ		32				;6-33 (設定時-2)水平帰線の桁数 15KHz=32
+CRTC_HBW25N		equ		32				;	25行+15KHz=32桁
+CRTC_HBW25H		equ		26				;	25行+24KHz=26桁
+CRTC_HBW20N		equ		32				;	20行+15KHz=32桁
+CRTC_HBW20H		equ		26				;	20行+24KHz=26桁
+
+CRTC_ATSC		equ		%010			;%000=トランスペアレント[白黒]・特殊制御文字有効
+										;%001=アトリビュート無し・特殊制御文字無効
+										;%010=トランスペアレント・[カラー]
+										;%100=ノントランスペアレント白黒・特殊制御文字有効
+										;%101=ノントランスペアレント白黒・特殊制御文字無効
+CRTC_ATRMAX		equ		20				;1-20 (設定時-1)一行あたりの最大アトリビュート数
+CRTC_DM			equ		0				;0=通常表示 1=反転表示
+CRTC_MN			equ		1				;0=画面終了時割り込み要求有効 1=画面終了時割り込み要求無効 (1固定)
+CRTC_ME			equ		1				;0=特殊制御文字による割り込み有効 1=特殊制御文字による割り込み無効 (1固定)
+CRTC_CM			equ		0				;0=カーソル表示無し 1=カーソル表示有り
+CRTC_CURX		equ		0				;0-127 カーソルの座標X 40桁の場合は2倍する
+CRTC_CURY		equ		0				;0-63 カーソルの座標Y
+
+;$67DE 25行+15KHz	0110 0111 1101 1110
+;$69BE 20行+15KHz	0110 1001 1011 1110
+;$6F58 25行+24KHz	0110 1111 0101 1000
+;$7338 20行+24KHz	0111 0011 0011 1000
+
+InitCRTC:
+	;ld			a,%00011001				;CRT I/F 同期ビットオン
+	;out			($40),a
+	;call		WaitVBlank
+
+	;xor			a
+	;out			($51),a					;Reset CRTC -> Screen Format 設定*5 に続く
+
+	ld			a,%10100000
+	out			($68),a					;DMAC: Mode Set(Reset) [AL][TCS][EW][RP][EN3][EN2][EN1][EN0]
+	ld			a,#(TVRAM & $FF)			;VRAM TOP $F3C8
+	out			($64),a					;Ch.2 DMA Address
+	ld			a,#(TVRAM >> 8)
+	out			($64),a
+	ld			a,#((120 * CRTC_HEIGHT * 2 - 1) & $FF)
+	out			($65),a						;Ch.2 Terminal Count (DMA mode=read)
+	ld			a,$80 +  ((120 * CRTC_HEIGHT * 2 - 1) >> 8)
+	out			($65),a
+
+	ld			a,#((CRTC_CB << 7) + CRTC_WIDTH - 2)
+	out			($50),a					;CRTC: Screen Format 1 [C/B] [H6,H5,H4,H3,H2,H1,H0]
+	ld			a,#((CRTC_BLINK << 6) + CRTC_HEIGHT - 1)
+	out			($50),a					;CRTC: Screen Format 2 [B1,B0] [L5,L4,L3,L2,L1,L0]
+
+	and			%00111111
+	cp			a,#(25-1)
+	jr			nz,.lines20
+	in			a,($40)					;bit1:0=24KHz 1=15KHz
+	and			%00000010
+	ld			bc,#(((CRTC_SPLIT << 7) + (CRTC_CURTYPE << 5) + CRTC_CHRH25N - 1) * 256 + ((CRTC_VBH25N - 1) << 5) + CRTC_HBW25N - 2)
+	jr			nz,.ccskip
+	ld			bc,#(((CRTC_SPLIT << 7) + (CRTC_CURTYPE << 5) + CRTC_CHRH25H - 1) * 256 + ((CRTC_VBH25H - 1) << 5) + CRTC_HBW25H - 2)
+	jr			.ccskip
+	.lines20:
+	in			a,($40)					;bit1:0=24KHz 1=15KHz
+	and			%00000010
+	ld			bc,#(((CRTC_SPLIT << 7) + (CRTC_CURTYPE << 5) + CRTC_CHRH20N - 1) * 256 + ((CRTC_VBH20N - 1) << 5) + CRTC_HBW20N - 2)
+	jr			nz,.ccskip
+	ld			bc,#(((CRTC_SPLIT << 7) + (CRTC_CURTYPE << 5) + CRTC_CHRH20H - 1) * 256 + ((CRTC_VBH20H - 1) << 5) + CRTC_HBW20H - 2)
+	.ccskip:
+;手動で設定する場合は、ここをコメントアウト
+;	ld			bc,((CRTC_SPLIT << 7) + (CRTC_CURTYPE << 5) + CRTC_CHRH - 1) * 256 + ((CRTC_VBH - 1) << 5) + CRTC_HBW - 2
+
+	ld			a,b
+	out			($50),a					;CRTC: Screen Format 3 [S] [C1,C0] [R4,R3,R2,R1,R0]
+	ld			a,c
+	out			($50),a					;CRTC: Scrren Format 4 [V2,V1,V0] [Z4,Z3,Z2,Z1,Z0]
+
+	ld			a,#((CRTC_ATSC << 5) + CRTC_ATRMAX - 1)
+	out			($50),a					;CRTC: Screen Format 5 [AT1,AT0,SC] [A4,A3,A2,A1,A0]
+
+	ld			a,#($40 + CRTC_ME * 2 + CRTC_MN)
+	out			($51),a					;CRTC: Set Interrupt Mask
+	ld			a,%11100100
+	out			($68),a					;DMAC: Mode Set [AL][TCS][EW][RP][EN3][EN2][EN1][EN0]
+	ld			a,#($20 + CRTC_DM)
+	out			($51),a					;CRTC: Start Display
+
+	call		WaitVBlank
+	.ccwait:
+	in			a,($40)					;表示期間になってから同期ビットの操作をする
+	and			$20
+	jr			nz,.ccwait
+
+	ld			a,%00010001				;CRT I/F 同期ビットオフ
+	out			($40),a
+	ret
+;;;;
