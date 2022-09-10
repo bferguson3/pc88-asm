@@ -56,19 +56,23 @@ DrawMapWindow:
 ShiftWindowRight:
 ; no drawing, only the buffer 
 ; do during VBL so tiles arent wonky 
-	ld a,(MapOffsetX)
+	ld a,(MapWidth)
+    ld b,WINDOW_WIDTH
+    sub a,b 
+    ld b,a              ; [B]=128-40
+    ld a,(MapOffsetX)
 	inc a 
-	cp #(128-40)		; right-most edge?
+	cp b		; right-most edge?
 	ret z				; then return 
 	ld (MapOffsetX),a
 ; else keep going
 	; shift tiles 0-39 to the left,
 	ld hl,map_buffer+1
 	ld de,map_buffer	; 20 rows 
-	ld bc,#(20<<8)		; win height
+	ld b,WINDOW_HEIGHT		; win height
 	.swrl:
 	push bc 
-	ld bc,#39			; win width - 1
+	ld bc,#(WINDOW_WIDTH-1)			; win width - 1
 	ldir 
 	inc hl 
 	inc de 
@@ -78,27 +82,24 @@ ShiftWindowRight:
 	ld a,1
 	ld (ScreenShifted),a 
 	; get the new tiles on the right column 
-	ld a,(MapOffsetX)
-	ld e,a 
-	ld d,0
-	ld hl,map1 		; plus MapOffset(16bit) + 39
-	ld bc,39		; window wid - 1
-	xor a 			; clc 
-	adc hl,bc 		; right-most tile 
-	adc hl,de 		; plus mapoffset value
+    call GetMapOffset_HL
+    xor a 
+    ld bc,#(WINDOW_WIDTH-1)
+    add hl,bc 
 	ld b,20			; ctr: number of tile rows 
-	ld ix,map_buffer+39	; address of buffer + win widt - 1
+	ld ix,#(map_buffer+(WINDOW_WIDTH-1))	; address of buffer + win widt - 1
 	.riteside:
 	ld a,(hl)		; map1 offset tile 
 	ld (ix+0),a 	; to buffer edge 
 	ld a,(MapWidth)	
 	ld e,a		; map width
 	ld d,0
-	adc hl,de 		; add map width to hl 
-	ld de,40		; add window width to 
+	add hl,de 		; add map width to hl 
+	ld de,WINDOW_WIDTH		; add window width to 
 	add ix,de 		; map buffer ptr 
 	djnz .riteside
-
+	inc sp
+	inc sp 
 	ret 
 ;;;;
 
@@ -106,7 +107,7 @@ ShiftWindowRight:
 ShiftWindowLeft:
 	ld a,(MapOffsetX)
 	dec a 
-	cp #0xff		; right-most edge?
+	cp -1		; right-most edge?
 	ret z				; then return 
 	ld (MapOffsetX),a
 ; else keep going
@@ -117,10 +118,10 @@ ShiftWindowLeft:
 	; shift tiles 0-39 to the right 
 	ld hl,map_backbuffer
 	ld de,map_buffer+1
-	ld b,#WINDOW_HEIGHT
+	ld b,WINDOW_HEIGHT
 	.swll: ; shift window left loop 
 	push bc 
-	ld bc,#(WINDOW_WIDTH-1)	; 39
+	ld bc,WINDOW_WIDTH-1	; 39
 	ldir 	; one row shift 
 	inc hl 
 	inc de  ; +1 to skip top right tile 
@@ -128,13 +129,7 @@ ShiftWindowLeft:
 	djnz .swll 
 	
 	; get the new tiles on the leftmost column 
-	ld a,(MapOffsetX)
-    ld e,a 
-    ld d,0
-    ld hl,map1 
-    ;ld bc,0
-    xor a 
-    add hl,de   ; src: map1 + x offset 
+    call GetMapOffset_HL
     ld b,WINDOW_HEIGHT 
     ld ix,map_buffer    ; target 
     .lside:
@@ -142,11 +137,123 @@ ShiftWindowLeft:
     ld (ix+0),a 
     ld a,(MapWidth)
     ld e,a 
-    ;ld d,0 
+    ld d,0 
     add hl,de           ; hl += mapwidth 
     ld de,WINDOW_WIDTH
     add ix,de 
     djnz .lside 
-
+	inc sp
+	inc sp 
 	ret 
+;;;;
+
+ShiftWindowDown:
+; increase Y 
+    ld a,(MapHeight)
+    ld b,#(WINDOW_HEIGHT)
+    sub a,b 
+    ld b,a              ; [B]=64-20
+    ld a,(MapOffsetY)
+    inc a 
+    cp b 
+  ret z               ; already at bottom - dont scroll just ret 
+    ld (MapOffsetY),a 
+    ld a,1 
+    ld (ScreenShifted),a ; ScreenShifted = True 
+    ; shift buffer rows 1-20 to 0-19
+    ld hl,map_buffer+WINDOW_WIDTH
+    ld de,map_buffer
+    ld bc,#(WINDOW_WIDTH*(WINDOW_HEIGHT-1))
+    ldir 
+
+    ; fill bottom row 
+    ;; offset = map1 + (offsety * mapwidth) + offsetx 
+    call GetMapOffset_HL ; + (128*19)
+    push hl 
+    ; add hl+mapwidth * window height to get bottom row 
+    ld a,(MapWidth)
+    dec a           ; minimum width 2 ;)
+    ld b,a 
+    ld c,0
+    ld hl,WINDOW_HEIGHT-1
+    ld de,WINDOW_HEIGHT-1
+    .wwl:
+    add hl,de 
+    djnz .wwl 
+    push hl 
+    pop bc      ; 128 * 19
+    pop hl 
+    add hl,bc   ; + offset 
+    ld de,map_buffer+(WINDOW_WIDTH*19)
+    ld bc,WINDOW_WIDTH
+    ldir 
+	inc sp
+	inc sp 
+  ret 
+;;;;
+
+ShiftWindowUp:
+    ; decrease Y 
+    ld a,(MapOffsetY)
+    dec a 
+    cp -1
+    ret z 
+    ld (MapOffsetY),a 
+    ; set shift bool 
+    ld a,1
+    ld (ScreenShifted),a 
+    ; move rows 0-19 to 1-20
+    ld hl,map_backbuffer
+    ld de,map_buffer+WINDOW_WIDTH
+    ld bc,WINDOW_WIDTH*(WINDOW_HEIGHT-1) ; 40 * 19
+    ldir 
+    ; add top row 
+    call GetMapOffset_HL
+    ld de,map_buffer
+    ld bc,WINDOW_WIDTH
+    ldir 
+	inc sp
+	inc sp 
+    ret
+;;;;
+
+GetMapOffset_HL:
+; returns the & of top left corner tile of the window in HL 
+; TODO: Improve this when X or Y == 0 
+    ld de,0
+    ld a,(MapOffsetY)
+    cp 1
+    jr z,.ofone 
+    cp 0 
+    jr z,.ofzer
+    ld b,a 
+    ld a,(MapWidth)
+    ld l,a 
+    ld h,0
+    ld e,a 
+    ;ld d,0              ; B = height , HL/DE = width
+    .gol:
+    add hl,de           ; Y ofs = width * height
+    djnz .gol
+    ld a,(MapOffsetX)
+    ld c,a 
+    ld b,0              ; BC = x ofs
+    add hl,bc           ; (Y*w)+X
+    ld bc,map1          ; 0x6000
+    add hl,bc           ; OK
+    ret
+    .ofone:
+    ld a,(MapWidth)
+    ld e,a 
+    ld d,0              ; DE = mapwdith
+    .ofzer:
+    ld hl,map1
+    add hl,de           ; + map addr
+    ;ret 
+    ;ld hl,map1 
+    ld a,(MapOffsetX)   ; + x offs
+    ld c,a 
+    ld b,0
+    add hl,bc 
+    ret 
 ;;;;

@@ -22,13 +22,14 @@ UpdateMapWindow: .macro
 
 
 ;; defs
-#define map1 0x6000 ; 128x64, variable
-#define map_buffer 0x8000 ; 40x20
-#define map_backbuffer 0x8320
-#define _endram 0x8640
 
 #define WINDOW_HEIGHT 20 
 #define WINDOW_WIDTH 40 
+
+#define map1 0x6000 ; 128x64, variable
+#define map_buffer 0x8000 ; 40x20
+#define map_backbuffer map_buffer + (40*20) ; 0x8320
+#define _endram 0x8640
 
 
 ;; Main 
@@ -85,6 +86,7 @@ hw_str:
 
 ;;; VARIABLES
 MapWidth: .db 128
+MapHeight: .db 64
 vblDone: .db 0
 ScreenShifted: .db 0
 MapOffsetX: .db 0
@@ -119,6 +121,18 @@ CheckInput:
 	ld b,bit4 
 	and b 
 	call z,ShiftWindowLeft
+
+	ld c,0
+	in a,(c)
+	ld b,bit2 
+	and b 
+	call z,ShiftWindowDown
+
+	ld c,1
+	in a,(c)
+	ld b,bit0 
+	and b 
+	call z,ShiftWindowUp
 
 	ret 
 ;;;;
