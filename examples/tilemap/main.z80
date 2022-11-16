@@ -1,5 +1,5 @@
 ;; main.z80 
-.include "pc88.z80"
+.include "../../pc88.z80"
 
 ;; macros 
 UpdateMapWindow: .macro 
@@ -97,7 +97,7 @@ MapOffsetY: .db 0
 .include "draw.z80"
 
 ;;
-.include "disk.z80"
+.include "../../disk.z80"
 
 ;; 
 .include "window.z80"

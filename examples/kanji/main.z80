@@ -1,0 +1,5 @@
+; kanji rom example WIP
+; main.z80
+
+loop:
+    jp loop 

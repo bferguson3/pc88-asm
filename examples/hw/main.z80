@@ -1,0 +1,19 @@
+;; main.z80 
+.include "../../pc88.z80"
+
+.org $100 
+
+main:
+    ;ld hl, #hw_str 
+    ;ld de, #TEXT_BASE + (0 * 120) + 0
+    ;ld bc, #(_end - hw_str)
+    ;ldir
+    Print hw_str, 0, 0, #(_end - hw_str)
+
+loop:
+    jp loop 
+
+
+hw_str:
+	.asciz "Hello World!"
+_end:

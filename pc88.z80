@@ -18,6 +18,8 @@
 
 #define CRTC_IRQ 0xf302
 
+#define TEXT_BASE 0xf3c8
+
 ;; Macros 
 DiskLoad: .macro Dst, Trk, Sec, Len, Drv
 	ld hl, &Dst        
@@ -115,3 +117,9 @@ ClearRam: .macro Start, Pages
 	djnz .lp1 
 .endm 
 
+Print: .macro StringAddr, X, Y, Length 
+	ld hl, &StringAddr 
+	ld bc, &Length 
+	ld de, #(0xf3c8 + (&Y * 120) + &X)
+	ldir 
+.endm 
