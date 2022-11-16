@@ -14,10 +14,63 @@ DrawKanji: .macro VRAMTgt, KanjiLoc
     out ($eb),a 
     ld hl,&VRAMTgt 
     ld de,&KanjiLoc
-    call _pullkanji    
+    ld a,$4f
+    cp d 
+    call nc, _pullkanji2
+    call c, _pullkanji    
 .endm
 
+;; 
+; SECOND STD KANJI
+;; PRE-FR MODELS OK
+_pullkanji2:
+    ld a,e
+    out ($ec),a     ; low to ec
+    ld a,d
+    out ($ed),a     ; high to ed
+    out ($ea),a     ; write anything - access start
+    nop 
+    nop             ; 8 cycles 
+    in a,($ed)      ; left byte 1
+    ld (hl),a 
+    inc hl 
+    in a,($ec)
+    ld (hl),a 
+    out ($eb),a     ; write anything - access done
+    ld bc,15
+    _kanjiloop2:
+    push bc
+    call _knextrow2
+    pop bc 
+    dec bc 
+    ld a,b 
+    or c 
+    jr nz,_kanjiloop2
+    ret
+_knextrow2:
+    ld bc,#79
+    add hl,bc       ; next row
+    inc de 
+    ld a,e
+    out ($ec),a 
+    ld a,d 
+    out ($ed),a 
+    out ($ea),a 
+    nop 
+    nop 
+    in a,($ed)
+    ld (hl),a 
+    inc hl 
+    in a,($ec)
+    ld (hl),a 
+    out ($eb),a 
+    ret
+
+;
+;; FIRST STD KANJI
+; PRE-FR MODELS OK
 _pullkanji:
+    ; rom1:
     ld a,e
     out ($e8),a     ; low to e8
     ld a,d
@@ -31,19 +84,17 @@ _pullkanji:
     in a,($e8)
     ld (hl),a 
     out ($eb),a     ; write anything - access done
-    
     ld bc,15
     _kanjiloop:
     push bc
-    call _nextrow
+    call _knextrow
     pop bc 
     dec bc 
     ld a,b 
     or c 
     jr nz,_kanjiloop
     ret
-
-_nextrow:
+_knextrow:
     ld bc,#79
     add hl,bc       ; next row
     inc de 
@@ -61,5 +112,4 @@ _nextrow:
     ld (hl),a 
     out ($eb),a 
     ret
-
 

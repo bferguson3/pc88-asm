@@ -12,11 +12,13 @@ Init:
 
 main:
     SETBANK_GREEN
+
     DrawKanji 0xc000, 0xd4c0
     DrawKanji 0xc002, 0xd4e0
     DrawKanji 0xc004, 0xd500
     DrawKanji 0xc006, 0xd520
     DrawKanji 0xc008, 0xd540
+    
     SETBANK_MAINRAM
 
 loop:

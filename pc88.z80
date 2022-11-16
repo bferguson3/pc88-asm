@@ -18,23 +18,18 @@
 
 SETBANK_BLUE: .macro 
 	out ($5c),a
-;	SetIOReg 0x5c, 0xff
 .endm
 SETBANK_RED: .macro 
 	out ($5d),a 
-	;SetIOReg 0x5d, 0xff
 .endm
 SETBANK_GREEN: .macro 
 	out ($5e),a
-;	SetIOReg 0x5e, 0xff
 .endm
 SETBANK_MAINRAM: .macro 
 	out ($5f),a 
-	;SetIOReg 0x5f, 0xff
 .endm
 
 #define CRTC_IRQ 0xf302
-
 #define TEXT_BASE 0xf3c8
 
 ;; Macros 
