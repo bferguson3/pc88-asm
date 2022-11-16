@@ -1,35 +1,65 @@
 
+; drawkanji.z80 
 
-;5d59 - JIS - haha kanji
-;４５４０　= 点 
-
-; 3020h to 4f5fh: 
-#define kanji_std_addr(a) ( ((a & $1f) << 4) | ((a & 0b01100000) << 9) | ((a & $1f00) << 1 ))
-         
-; 4540 = 0100010101000000
+; convert JIS to ROMH
+kanji_std_addr_L: .macro ADDR
+    ld a,#( ((&ADDR & $1f) << 4) | ((&ADDR & 0b01100000) << 9) | ((&ADDR & $1f00) << 1 )) & 0xff
+.endm
+kanji_std_addr_H: .macro ADDR
+    ld a,#( ((&ADDR & $1f) << 4) | ((&ADDR & 0b01100000) << 9) | ((&ADDR & $1f00) << 1 ))>>8
+.endm
 ;        
 
-;e8, e9 - L, H addr of kanji in JIS 
+DrawKanji: .macro VRAMTgt, KanjiLoc
+    out ($eb),a 
+    ld hl,&VRAMTgt 
+    ld de,&KanjiLoc
+    call _pullkanji    
+.endm
 
-ld hl,$c000 ; VRAM address to draw to 
-ld a,#(kanji_std_addr($4540) >> 8) 
-out ($e9),a 
-ld a,#(kanji_std_addr($4540) & 0xff)
-out ($e8),a 
-out ($ea),a ; write anything - access start
-nop 
-nop         ; 8 cycles 
-ld bc,#79  ; next row
-ld d,#16    ; loop count
 _pullkanji:
-in a,($e9)  ; left byte 1
-ld (hl),a 
-inc hl 
-in a,($e8)
-ld (hl),a 
-add hl,bc   ; next row
-dec d 
-xor a 
-or d 
-jr nz,_pullkanji
-out ($eb),a ; write anything - access done
+    ld a,e
+    out ($e8),a     ; low to e8
+    ld a,d
+    out ($e9),a     ; high to e9
+    out ($ea),a     ; write anything - access start
+    nop 
+    nop             ; 8 cycles 
+    in a,($e9)      ; left byte 1
+    ld (hl),a 
+    inc hl 
+    in a,($e8)
+    ld (hl),a 
+    out ($eb),a     ; write anything - access done
+    
+    ld bc,15
+    _kanjiloop:
+    push bc
+    call _nextrow
+    pop bc 
+    dec bc 
+    ld a,b 
+    or c 
+    jr nz,_kanjiloop
+    ret
+
+_nextrow:
+    ld bc,#79
+    add hl,bc       ; next row
+    inc de 
+    ld a,e
+    out ($e8),a 
+    ld a,d 
+    out ($e9),a 
+    out ($ea),a 
+    nop 
+    nop 
+    in a,($e9)
+    ld (hl),a 
+    inc hl 
+    in a,($e8)
+    ld (hl),a 
+    out ($eb),a 
+    ret
+
+
