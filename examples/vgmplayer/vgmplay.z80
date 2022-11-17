@@ -7,116 +7,116 @@ _songLoop: .dw 0
 _SONGPLAYING: .db 0
 
 VGMPlay:
-		ld hl,(_songPointer)
-		ld a,(hl)
-		inc hl 
-		ld (_songPointer),hl 
+	ld hl,(_songPointer)
+	ld a,(hl)
+	inc hl 
+	ld (_songPointer),hl 
 
-		jp PlayLoop
+	jp PlayLoop
 
-	endPlay:
-		ret
-		
-	PlayLoop: 
-        cp #0x31
-        jp z,_AYMASK    ; not implemented atm 
-		cp #0x55
-		jp z,_WRITEOPN  ; OPN reg 2203
-		cp #0x61
-		jp z,_SAMPLEWAIT 
-		cp #0x62 
-		jp z,_ENDFRAME  ; wait 1/60s
-		cp #0x63
-		jp z,_ENDFRAME  ; wait 1/50s
-		cp #0x66
-		jp z,_ENDSONG
-		cp #0x67 
-		jp z,_DBLOCK	; DBLOCK ; no data blocks
-		cp #0x80		; 70-7f
-		jp c,_QWAIT
+endPlay:
+	ret
 
-		jp endPlay 
+PlayLoop: 
+	cp #0x31
+	jp z,_AYMASK    ; not implemented atm 
+	cp #0x55
+	jp z,_WRITEOPN  ; OPN reg 2203
+	cp #0x61
+	jp z,_SAMPLEWAIT 
+	cp #0x62 
+	jp z,_ENDFRAME  ; wait 1/60s
+	cp #0x63
+	jp z,_ENDFRAME  ; wait 1/50s
+	cp #0x66
+	jp z,_ENDSONG
+	cp #0x67 
+	jp z,_DBLOCK	; DBLOCK ; no data blocks
+	cp #0x80		; 70-7f
+	jp c,_QWAIT
 
-    _AYMASK:
-        jp endPlay
+	jp endPlay 
 
-	; This skips any data blocks, for compatibility.
-	_DBLOCK:
-		call _GETNEXTBYTE 	; 66h 
-		call _GETNEXTBYTE	; 81h?
-		call _GETNEXTBYTE	; len, low 
-		ld c,a 
-		call _GETNEXTBYTE	; len, hi 
-		ld b,a 
-		;call _GETNEXTBYTE	; len, unused 
-		;call _GETNEXTBYTE	; len, usused
-		ld hl,(_songPointer)
-		inc hl 
-		inc hl 	; skip 2 unused len bytes 
-		add hl,bc 
-		inc hl 
-		ld (_songPointer),hl 
-		call _GETNEXTBYTE
-		jp PlayLoop
+_AYMASK:
+	jp endPlay
 
-	_GETNEXTBYTE:
-        ; increments songPointer and gets byte into A
-		ld hl,(_songPointer) 
-		ld a,(hl)
-		inc hl 
-		ld (_songPointer),hl
-		ret
+; This skips any data blocks, for compatibility.
+_DBLOCK:
+	call _GETNEXTBYTE 	; 66h 
+	call _GETNEXTBYTE	; 81h?
+	call _GETNEXTBYTE	; len, low 
+	ld c,a 
+	call _GETNEXTBYTE	; len, hi 
+	ld b,a 
+	;call _GETNEXTBYTE	; len, unused 
+	;call _GETNEXTBYTE	; len, usused
+	ld hl,(_songPointer)
+	inc hl 
+	inc hl 	; skip 2 unused len bytes 
+	add hl,bc 
+	inc hl 
+	ld (_songPointer),hl 
+	call _GETNEXTBYTE
+	jp PlayLoop
 
-	_WRITEOPN:
-		; Get register
-		ld c,#0x44
-		call _GETNEXTBYTE
-		out (c), a 
-		;nop ; I see no need to wait here! 
-		; Get byte 
-		ld c,#0x45
-		call _GETNEXTBYTE
-		out (c), a 		
-		; Loop 
-		call _GETNEXTBYTE
-		jp PlayLoop
+_GETNEXTBYTE:
+	; increments songPointer and gets byte into A
+	ld hl,(_songPointer) 
+	ld a,(hl)
+	inc hl 
+	ld (_songPointer),hl
+	ret
 
-	_SAMPLEWAIT:
-        call _GETNEXTBYTE
-		jp endPlay 
-	
-	_ENDFRAME:
-		jp endPlay 
+_WRITEOPN:
+	; Get register
+	ld c,#0x44
+	call _GETNEXTBYTE
+	out (c), a 
+	;nop ; I see no need to wait here! 
+	; Get byte 
+	ld c,#0x45
+	call _GETNEXTBYTE
+	out (c), a 		
+	; Loop 
+	call _GETNEXTBYTE
+	jp PlayLoop
 
-	_ENDSONG: 
-		ld hl,(_songLoop)
-		ld a,h 
-		or l 
-		jr nz,_LOOP
-		xor a 
-		ld (_SONGPLAYING),a
+_SAMPLEWAIT:
+	call _GETNEXTBYTE
+	jp endPlay 
 
-	_LOOP:
-		ld hl,(_songLoop) 
-		ld (_songPointer),hl 
-		jp endPlay 
+_ENDFRAME:
+	jp endPlay 
 
-	_ERROR:
-		jp _ERROR 
-	
-	_QWAIT: 
-        ; approximation! 
-        ld b,#0			; t7
-        and #0xf		; t7
-        ld c,a 			; t4
-		inc c			; t4	= 22
-        _qwloop:
-        .rept 9		; we want to waste 88 (-22-28) t-states.
-        nop 	; approx 1 microsecond, or 1 mil. of a second t4
-        .endm 
-        dec c 			; t4
-        xor a 			; t4
-        or c 			; t4 
-        jr nz,_qwloop 	; t12 = 24
-        call _GETNEXTBYTE
-		jp PlayLoop
+_ENDSONG: 
+	ld hl,(_songLoop)
+	ld a,h 
+	or l 
+	jr nz,_LOOP
+	xor a 
+	ld (_SONGPLAYING),a
+
+_LOOP:
+	ld hl,(_songLoop) 
+	ld (_songPointer),hl 
+	jp endPlay 
+
+_ERROR:
+	jp _ERROR 
+
+_QWAIT: 
+	; approximation! 
+	ld b,#0			; t7
+	and #0xf		; t7
+	ld c,a 			; t4
+	inc c			; t4	= 22
+	_qwloop:
+	.rept 9		; we want to waste 88 (-22-28) t-states.
+	nop 	; approx 1 microsecond, or 1 mil. of a second t4
+	.endm 
+	dec c 			; t4
+	xor a 			; t4
+	or c 			; t4 
+	jr nz,_qwloop 	; t12 = 24
+	call _GETNEXTBYTE
+	jp PlayLoop
