@@ -16,6 +16,9 @@
 #define bit6 #(1<<6)
 #define bit7 #(1<<7)
 
+#define TRUE 1 
+#define FALSE 0 
+
 SETBANK_BLUE: .macro 
 	out ($5c),a
 .endm

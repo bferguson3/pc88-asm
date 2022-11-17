@@ -1,0 +1,67 @@
+; vgm player example
+
+.org $100 
+
+.include "../../pc88.z80"
+
+init: 
+    di 
+	SetVBL 
+	ld hl,Vblank        ; set IRQ
+	ld (CRTC_IRQ),hl
+    ei
+
+    call StartSong
+
+    jp main 
+
+
+main:
+    ; infinite loop
+    jp main
+
+
+.include "vgmplay.z80"
+
+
+StartSong:
+    ld hl,#(TestSong)   
+    ld (_songStart),hl          ; set start point
+    ld (_songPointer),hl        ; and pointer
+    ld hl,#(TestSong)+0x29      
+    ld (_songLoop),hl           ; and loop pt
+    ld a,TRUE 
+    ld (_SONGPLAYING),a         ; enable playback
+    ret
+
+
+Vblank:
+	di 
+	push af 
+	push bc 
+	push de 
+	push hl 
+
+	; play music 
+    ld a,(_SONGPLAYING)
+    cp 1 
+    jr nz,_nomus
+    call VGMPlay
+	_nomus:
+    ; end vbl
+	;ld a,1
+	;ld (vblDone),a 
+	pop hl 
+	pop de 
+	pop bc 
+	pop af 
+	
+	SetVBL	
+	ei
+	ret
+;;;;
+
+TestSong: 
+; Strip the 256 byte header!
+; tail -c +257 <infile>.vgm > outfile.vgm
+.incbin "88test2.vgm"
