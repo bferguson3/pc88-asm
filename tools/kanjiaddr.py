@@ -70,11 +70,13 @@ else:
     f2 = open("output.bin", "wb")
 
 for r in inputstr:
-    b = sjis_to_jis(r.encode("shift_jis"))
+    sj = r.encode("shift_jis")
+    print(r, "\tsjis code:",hex(sj[0]<<8|sj[1]))
+    b = sjis_to_jis(sj)
     if not filemode:
-        print(r,"jis code",hex(b[0])+hex(b[1])[2:])
+        print("\tjis code",hex(b[0])+hex(b[1])[2:])
         if( (b[0] < 1) ):
-            print("addr in kanji rom:",hex(halfwidth_addr(b[1])))
+            print("\taddr in kanji rom:",hex(halfwidth_addr(b[1])))
         elif ( (b[0] > 0) and (b[0] < 2)):
             print("addr in kanji rom:",hex(qtr_addr(b[0] << 8 | b[1])))
         elif((b[0] > 0x20) and (b[0] < 0x28)): #non-kanji

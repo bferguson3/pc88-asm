@@ -1,21 +1,44 @@
 ; vgmplay.z80 
 ; OPN / 2203
 
+
 _songStart: .dw 0
 _songPointer: .dw 0
 _songLoop: .dw 0
+_songWait: .dw 0
 _SONGPLAYING: .db 0
 
+
 VGMPlay:
+	; waiting?
+	ld hl,(_songWait)
+	ld a,h 
+	or l 
+	jr z,_nowt
+	jp PlayWait 
+	_nowt:	; else get next byte and play
 	ld hl,(_songPointer)
 	ld a,(hl)
 	inc hl 
 	ld (_songPointer),hl 
-
 	jp PlayLoop
 
 endPlay:
 	ret
+
+
+PlayWait:
+	ld hl,(_songWait)
+	ld bc,#735
+	sbc hl,bc 
+	jr c,_clrwait 
+	ld (_songWait),hl 
+	jp endPlay 
+	_clrwait:
+	ld hl,#0 
+	ld (_songWait),hl 
+	call _GETNEXTBYTE
+	jp PlayLoop
 
 PlayLoop: 
 	cp #0x31
@@ -37,8 +60,11 @@ PlayLoop:
 
 	jp endPlay 
 
-_AYMASK:
+
+_AYMASK: 	; TODO
+	call _GETNEXTBYTE
 	jp endPlay
+
 
 ; This skips any data blocks, for compatibility.
 _DBLOCK:
@@ -48,8 +74,6 @@ _DBLOCK:
 	ld c,a 
 	call _GETNEXTBYTE	; len, hi 
 	ld b,a 
-	;call _GETNEXTBYTE	; len, unused 
-	;call _GETNEXTBYTE	; len, usused
 	ld hl,(_songPointer)
 	inc hl 
 	inc hl 	; skip 2 unused len bytes 
@@ -59,34 +83,41 @@ _DBLOCK:
 	call _GETNEXTBYTE
 	jp PlayLoop
 
+
 _GETNEXTBYTE:
 	; increments songPointer and gets byte into A
-	ld hl,(_songPointer) 
-	ld a,(hl)
-	inc hl 
-	ld (_songPointer),hl
-	ret
+	ld hl,(_songPointer) 		; t16
+	ld a,(hl)					; t7
+	inc hl 						; t6
+	ld (_songPointer),hl		; t16
+	ret							; t10   = 55t
+
 
 _WRITEOPN:
-	; Get register
-	ld c,#0x44
+	ld c,#0x44		; Get register
 	call _GETNEXTBYTE
 	out (c), a 
 	;nop ; I see no need to wait here! 
-	; Get byte 
-	ld c,#0x45
+	ld c,#0x45		; Get byte to write 
 	call _GETNEXTBYTE
 	out (c), a 		
 	; Loop 
 	call _GETNEXTBYTE
 	jp PlayLoop
 
+
 _SAMPLEWAIT:
-	call _GETNEXTBYTE
+	call _GETNEXTBYTE		; 55
+	ld c,a
+	call _GETNEXTBYTE		; 55
+	ld b,a 					; = 124
+	ld (_songWait), bc 
 	jp endPlay 
+
 
 _ENDFRAME:
 	jp endPlay 
+
 
 _ENDSONG: 
 	ld hl,(_songLoop)
@@ -95,28 +126,21 @@ _ENDSONG:
 	jr nz,_LOOP
 	xor a 
 	ld (_SONGPLAYING),a
-
-_LOOP:
+	_LOOP:
 	ld hl,(_songLoop) 
 	ld (_songPointer),hl 
 	jp endPlay 
 
+
 _ERROR:
 	jp _ERROR 
 
-_QWAIT: 
-	; approximation! 
+
+_QWAIT: 	; approximation! 
 	ld b,#0			; t7
 	and #0xf		; t7
 	ld c,a 			; t4
 	inc c			; t4	= 22
-	_qwloop:
-	.rept 9		; we want to waste 88 (-22-28) t-states.
-	nop 	; approx 1 microsecond, or 1 mil. of a second t4
-	.endm 
-	dec c 			; t4
-	xor a 			; t4
-	or c 			; t4 
-	jr nz,_qwloop 	; t12 = 24
-	call _GETNEXTBYTE
-	jp PlayLoop
+	ld (_songWait),bc
+	jp endPlay 
+	
