@@ -1,7 +1,7 @@
 
 ; drawkanji.z80 
 
-; convert JIS to ROMH
+; convert JIS to ROM
 kanji_std_addr_L: .macro ADDR
     ld a,#( ((&ADDR & $1f) << 4) | ((&ADDR & 0b01100000) << 9) | ((&ADDR & $1f00) << 1 )) & 0xff
 .endm
@@ -16,28 +16,16 @@ DrawKanji: .macro VRAMTgt, KanjiLoc
     ld de,&KanjiLoc
     ld a,$4f
     cp d 
-    call nc, _pullkanji2
-    call c, _pullkanji    
+    jr c, $+5
+    call _pullkanji2
+    call _pullkanji
 .endm
 
 ;; 
 ; SECOND STD KANJI
 ;; PRE-FR MODELS OK
-_pullkanji2:
-    ld a,e
-    out ($ec),a     ; low to ec
-    ld a,d
-    out ($ed),a     ; high to ed
-    out ($ea),a     ; write anything - access start
-    nop 
-    nop             ; 8 cycles 
-    in a,($ed)      ; left byte 1
-    ld (hl),a 
-    inc hl 
-    in a,($ec)
-    ld (hl),a 
-    out ($eb),a     ; write anything - access done
-    ld bc,15
+_pullkanji2: ; kanji standard 2
+    ld bc,16
     _kanjiloop2:
     push bc
     call _knextrow2
@@ -47,10 +35,8 @@ _pullkanji2:
     or c 
     jr nz,_kanjiloop2
     ret
+
 _knextrow2:
-    ld bc,#79
-    add hl,bc       ; next row
-    inc de 
     ld a,e
     out ($ec),a 
     ld a,d 
@@ -64,27 +50,16 @@ _knextrow2:
     in a,($ec)
     ld (hl),a 
     out ($eb),a 
+    ld bc,#79
+    add hl,bc       ; next row
+    inc de 
     ret
 
 ;
 ;; FIRST STD KANJI
 ; PRE-FR MODELS OK
-_pullkanji:
-    ; rom1:
-    ld a,e
-    out ($e8),a     ; low to e8
-    ld a,d
-    out ($e9),a     ; high to e9
-    out ($ea),a     ; write anything - access start
-    nop 
-    nop             ; 8 cycles 
-    in a,($e9)      ; left byte 1
-    ld (hl),a 
-    inc hl 
-    in a,($e8)
-    ld (hl),a 
-    out ($eb),a     ; write anything - access done
-    ld bc,15
+_pullkanji: ; kanji standard 1 / nonkanji
+    ld bc,16
     _kanjiloop:
     push bc
     call _knextrow
@@ -94,10 +69,8 @@ _pullkanji:
     or c 
     jr nz,_kanjiloop
     ret
+
 _knextrow:
-    ld bc,#79
-    add hl,bc       ; next row
-    inc de 
     ld a,e
     out ($e8),a 
     ld a,d 
@@ -111,5 +84,8 @@ _knextrow:
     in a,($e8)
     ld (hl),a 
     out ($eb),a 
+    ld bc,#79
+    add hl,bc       ; next row
+    inc de 
     ret
 

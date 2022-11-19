@@ -1,4 +1,4 @@
-; kanji rom example WIP
+; kanji rom example 
 ; main.z80
 
 .org $100

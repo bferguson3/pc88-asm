@@ -70,6 +70,7 @@ else:
     f2 = open("output.bin", "wb")
 
 for r in inputstr:
+    print(r.encode("shift_jis"))
     b = sjis_to_jis(r.encode("shift_jis"))
     if not filemode:
         print(r,"jis code",hex(b[0])+hex(b[1])[2:])
