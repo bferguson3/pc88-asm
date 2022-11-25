@@ -43,6 +43,27 @@ DiskLoad: .macro Dst, Trk, Sec, Len, Drv
 	call DISK_Load 
 .endm
 
+; files list 
+FileTableEntry: .macro fName, track, sector, length, target
+    .asciz &fName			; 9 chars exactly, z-term
+	.db &track 				; 
+	.db &sector 			; 
+	.dw &length				;
+	.dw &target
+.endm ; 16 bytes 
+
+; huffman tree node decompressed
+node: .macro
+    ;left index :  
+    .db 0
+    ;right index : 
+    .db 0
+    ;char:  
+    .db 0
+    ;index: 
+    .db 0 
+.endm ; 4 bytes 
+
 Downshift4: .macro 
 	srl a 
 	srl a 

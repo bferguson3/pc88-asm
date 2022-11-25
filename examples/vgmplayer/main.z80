@@ -63,5 +63,6 @@ Vblank:
 
 TestSong: 
 ; Strip the 256 byte header!
+; Include loop point seperately!
 ; tail -c +257 <infile>.vgm > outfile.vgm
-.incbin "88test2.vgm"
+.incbin "parsed.vgm"
