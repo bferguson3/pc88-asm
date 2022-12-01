@@ -1,7 +1,7 @@
 # huffize.py 
 
-inputstr = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet consectetur. Nisl rhoncus mattis rhoncus urna neque. Sit amet porttitor eget dolor. Vitae nunc sed velit dignissim sodales ut eu sem. Volutpat blandit aliquam etiam erat. Id diam vel quam elementum pulvinar etiam non quam lacus. Faucibus et molestie ac feugiat sed lectus vestibulum. Diam quis enim lobortis scelerisque fermentum. Lacus suspendisse faucibus interdum posuere lorem ipsum dolor sit. Elementum pulvinar etiam non quam lacus suspendisse. Et magnis dis parturient montes nascetur ridiculus mus mauris vitae. Est ullamcorper eget nulla facilisi etiam dignissim diam quis enim. Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Dictum fusce ut placerat orci nulla. Bibendum neque egestas congue quisque egestas. Eget nulla facilisi etiam dignissim diam quis. Tristique nulla aliquet enim tortor at. Massa tincidunt nunc pulvinar sapien et ligula. Sagittis id consectetur purus ut faucibus pulvinar elementum."
-
+#inputstr = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet consectetur. Nisl rhoncus mattis rhoncus urna neque. Sit amet porttitor eget dolor. Vitae nunc sed velit dignissim sodales ut eu sem. Volutpat blandit aliquam etiam erat. Id diam vel quam elementum pulvinar etiam non quam lacus. Faucibus et molestie ac feugiat sed lectus vestibulum. Diam quis enim lobortis scelerisque fermentum. Lacus suspendisse faucibus interdum posuere lorem ipsum dolor sit. Elementum pulvinar etiam non quam lacus suspendisse. Et magnis dis parturient montes nascetur ridiculus mus mauris vitae. Est ullamcorper eget nulla facilisi etiam dignissim diam quis enim. Hac habitasse platea dictumst vestibulum rhoncus est pellentesque. Dictum fusce ut placerat orci nulla. Bibendum neque egestas congue quisque egestas. Eget nulla facilisi etiam dignissim diam quis. Tristique nulla aliquet enim tortor at. Massa tincidunt nunc pulvinar sapien et ligula. Sagittis id consectetur purus ut faucibus pulvinar elementum."
+inputstr = "AAAAABBBCCCCDDDDDDDDDz"
 # huffman tree class 
 class freqTree():
     def __init__(self):
@@ -67,28 +67,30 @@ def node(char, freq):
     return _node(char=char, freq=freq)
 
 # DANGER! RECURSION!!
-def traverse(node, bitstr):
+def traverse(node, bitstr, dic):
     ### Populates the dictionary
     if(node.char != None): # am I a leaf?
-        huffdict[node.char] = bitstr
+        dic[node.char] = bitstr
         return 
     if (node.left != None):
-        traverse(node.left, bitstr+"0")
+        traverse(node.left, bitstr+"0", dic)
     if(node.right != None):
-        traverse(node.right, bitstr+"1")
+        traverse(node.right, bitstr+"1", dic)
 
 def trav_output(node):
     ### Writes to global output binary string  
     global output
-    if(node.left != None):
-        output = output + "0" # node
-        trav_output(node.left)
-    if(node.right != None):
-        trav_output(node.right)
+    global maxsz 
     if(node.char != None):
         output = output + "1" # leaf 
-        output = output + "{0:07b}".format(ord(node.char)) # data length is 7 bits.
+        s = "{0:08b}".format(ord(node.char))
+        output = output + s[-maxsz:]
+        print(s[-maxsz:])
         return
+    else:
+        output = output + "0" # node
+        trav_output(node.left)
+        trav_output(node.right)
         
 
 def str2bin(t):
@@ -110,11 +112,24 @@ def encode(instr, dict):
     i = 0 
     out = ''
     while i < len(instr):
-        out = out + huffdict[instr[i]]
+        out = out + dict[instr[i]]
+        #print(huffdict[instr[i]])
         i += 1
     return out
 
 
+def sortByVal(t, dic):
+#"""This is useless. """
+    out = {}
+    lowest = 0
+    i = 0
+    while i < 128:
+        for c in dic:
+            if(int(dic[c],2) == i):
+                out[c] = dic[c]
+                print(c, out[c])
+        i += 1
+    return out 
 ##
 ## script
 ##
@@ -133,26 +148,6 @@ tree.sort()    # sort from highest frequency to lowest so we can pop
 final = []      # make final frequency tree 
 fi = 0          # final index counter
 
-# for the first two, they will not be forks, but final nodes. 
-# do them individually ...
-n = node(tree.items[len(tree.items)-1].char, tree.items[len(tree.items)-1].freq)
-n2 = node(tree.items[len(tree.items)-2].char, tree.items[len(tree.items)-2].freq)
-n.index = fi
-fi += 1 
-n.index = fi
-fi += 1
-final.append(n)
-final.append(n2)
-tree.poplast()  # remove them from the tree queue
-tree.poplast()
-
-# insert the first node... 
-f = fork(n, n2)
-f.index = fi 
-fi += 1
-final.append(f)
-tree.items.append(f)    # and add the parent node back to the queue
-tree.sort() # important! sort after every insertion.
 
 # recurse while there are nodes to pair 
 while len(tree.items) > 1:
@@ -165,22 +160,36 @@ while len(tree.items) > 1:
     tree.items.append(new)  # add it back to the queue
     tree.sort()
 
-
 # assign each node a binary string 
 huffdict = {}
 bitstr = ""
 
-# build the huffdict object from the local tree struct 
-traverse(final[len(final)-1], "")
+#for c in huffdict:
+#    print(c, huffdict[c])
 
+newdic = sortByVal(final, huffdict)
+# build the huffdict object from the local tree struct 
+traverse(final[len(final)-1], "", newdic)
 
 ## Write the binary tree data:
 output = ""
 # FROM THE LEFT!
 # first 6 bits = length in bits of each VAL, 1-127. 7 = 128 values, 8 = 256 values...
-output += "{0:06b}".format(7) # 7 bits long
+## WAIT - first lets get the actual size of the data.
+maxsz = 0
+for c in newdic: 
+    if (ord(c) > maxsz):
+        maxsz = ord(c)
+#output += "{0:06b}".format(maxsz) 
+g = 1 
+while (g << 1) < maxsz:
+    g = g << 1
+print("Data length in bits:", len("{:b}".format(g)))
+maxsz = len("{:b}".format(g))
+output += "{0:06b}".format(maxsz)
 # 7th bit is always 0 (root is a node)
-output += "0"
+#dont output it. 
+#output += "0"
 
 # build the binary encoded huffman tree
 trav_output(final[len(final)-1])
@@ -190,20 +199,22 @@ while(len(output) % 8 != 0):
     output = output + "0"
 # convert to bytes 
 outby = str2bin(output)
+print("tree is",len(output),"bits.")
+print(output)
 # write to file 
 f = open("tree.bin", "wb")
 for a in outby:
     f.write(a)
 f.close()
 
-
 ## finally, encode the data itself
 
 # encode the string for output
-encodedstr = encode(inputstr, huffdict)
+encodedstr = encode(inputstr, newdic)
 # buffer it to 8 bits 
 while(len(encodedstr) % 8 != 0):
     encodedstr = encodedstr + "0"
+print(encodedstr)
 # convert to bytes 
 encodedbytes = str2bin(encodedstr)
 # write bytes to file 
@@ -215,3 +226,58 @@ f.close()
 #
 print("length tree {} + length encoded str {} = {}".format( len(outby), len(encodedbytes), len(outby)+len(encodedbytes)), "bytes")
 print("length of uncompressed string:",len(inputstr))
+
+
+# 000111.0.11000100.0.11000001.0.0.11111010.11000010.11000011000000
+# 0 - D 
+# 1 0 - A 
+# 1 1 1 - Z 
+# 1 1 0 0 - B 
+# 1 1 0 1 - C 
+"""
+111.111.111 
+if 1 : 
+    go up 1 bytes (2 nodes)
+if 0 :
+    go up 0 bytes (1 node)
+
+start at 0x250
+0x250 + 1 = 2
+0x250 + (2*2) = 0x254
+0x254 + 1 = 4
+0x250 + (4*2) = 0x258
+0x258 + 1 = 6
+0x250 + (12) = 0x25c
+0x25c = z 
+test:
+0: 1 2 
+1: D n 
+2: 3 4 
+3: A n 
+4: 5 6 
+5: 6 7
+6: C n 
+7: B n
+8: z n
+
+            0 
+    1D               2
+            3A               4
+                        5          6z 
+                    C7       B8
+                 
+               
+
+1 2 
+D n 
+3 4 
+A n 
+5 6 
+C n 
+B n 
+z n 
+
+"""
+
+1 2 
+D n 

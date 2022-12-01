@@ -87,6 +87,12 @@ def decodeTree(r, d):
         _b = getNextBit(d)
 
 
+#lastbit = 1
+#lastbyte = 0 
+#if data[lastbyte] & lastbit == 1 
+#  print char
+ 
+
 # load in tree and data bytes 
 f = open(sys.argv[1], "rb")
 tbytes = f.read()
@@ -101,17 +107,17 @@ tree = huffTree()
 # first 6 bits are length of data field 
 dataLength = tbytes[0] >> 2
 # ( bit 7 is node 0 )
-_lb = bitcounter = (1 << 0) # reset to 1 << 7
+_lb = bitcounter = (1 << 1) # reset to 1 << 7
 # start the tree with a blank
 root = node()
 # recurse the tree bytes and build the tree shcema
 doNode(root, tbytes)
 
 # make a dictionary (not needed)
-#makedic(root, "")
+makedic(root, "")
 # print the dict
-#for k,v in dic.items():
-#    print(k,v)
+for k,v in dic.items():
+    print(k,v)
 
 # reset counters
 curIndex = 0
