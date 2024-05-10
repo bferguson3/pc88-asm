@@ -23,14 +23,15 @@ UpdateMapWindow: .macro
 
 ;; defs
 
-#define WINDOW_HEIGHT 20 
-#define WINDOW_WIDTH 40 
+#define WINDOW_HEIGHT 20
+#define WINDOW_WIDTH 40
 
 #define map1 0x6000 ; 128x64, variable
 #define map_buffer 0x8000 ; 40x20
-#define map_backbuffer map_buffer + (40*20) ; 0x8320
+#define map_backbuffer map_buffer + (WINDOW_HEIGHT*WINDOW_WIDTH) ; 0x8320
 #define _endram 0x8640
 
+#define WINDOW_TOP_LEFT 0xC000
 
 ;; Main 
 .org 0x100
@@ -48,7 +49,7 @@ main:
 	call InitCRTC
 
 	; load map1 to 6000h
-	DiskLoad 0x6000, 4, 1, 32, 0
+	DiskLoad 0x6000, 4, 1, 0x20, 0 ;; "maked88 app.d88 map1.bin 0 4 1" file is 32x256 bytes, or 0x2000 / 0x100 = 0x20
 
 	; copy map1 window to buffer 
 	CopyMapWindowToBuffer map1, map_buffer

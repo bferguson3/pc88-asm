@@ -5,11 +5,13 @@ default:
 ifeq ($(PROJECT),0)
 	$(info PROJECT var not set! Try e.g. 'make PROJECT=examples/hw')
 	@$(exit)
-else
+endif
 	./zasm -wuy $(PROJECT)/main.z80 --dotnames --reqcolon
 	python3 -B ./tools/maked88.py app.d88 ipl.rom 0 0 1 
 	python3 -B ./tools/maked88.py app.d88 $(PROJECT)/main.rom 0 0 2 
-#	python3 -B ./tools/maked88.py app.d88 $(PROJECT)/map1.bin 0 4 1 
+# tilemap example
+ifeq ($(PROJECT),examples/tilemap)
+	python3 -B ./tools/maked88.py app.d88 $(PROJECT)/map1.bin 0 4 1 
 endif 
 
 add:

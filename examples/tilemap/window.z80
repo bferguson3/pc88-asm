@@ -3,12 +3,12 @@
 
 DrawMapWindow:
 	;; Draw Tile From Map --- Buffer 
-	ld a,#20		; window height
+	ld a,#WINDOW_HEIGHT		; window height
 	ld ($02),a 
 	ld hl,map_buffer
 	ld ix,map_backbuffer
-	ld bc,40*256	; X tile counter - window width
-	ld de,0xc000 	; set tile destination - top left window corner
+	ld bc,#WINDOW_WIDTH*256	; X tile counter - window width
+	ld de,WINDOW_TOP_LEFT 	; set tile destination - top left window corner
 	.rowloop:
 	push bc 
 	ld a,(hl)	; multiply A by 16 
@@ -46,7 +46,7 @@ DrawMapWindow:
 	dec a 
 	ld ($02),a 
 	cp #0
-	ld bc,40*256	; window height
+	ld bc,WINDOW_WIDTH*256	; window height
 	jp nz,.rowloop 
 	ret
 ;;;;
@@ -67,7 +67,7 @@ ShiftWindowRight:
 	ld (MapOffsetX),a
 ; else keep going
 	; shift tiles 0-39 to the left,
-	ld hl,map_buffer+1
+	ld hl,map_backbuffer+1
 	ld de,map_buffer	; 20 rows 
 	ld b,WINDOW_HEIGHT		; win height
 	.swrl:
@@ -150,7 +150,7 @@ ShiftWindowLeft:
 ShiftWindowDown:
 ; increase Y 
     ld a,(MapHeight)
-    ld b,#(WINDOW_HEIGHT)
+    ld b,WINDOW_HEIGHT
     sub a,b 
     ld b,a              ; [B]=64-20
     ld a,(MapOffsetY)
@@ -161,7 +161,7 @@ ShiftWindowDown:
     ld a,1 
     ld (ScreenShifted),a ; ScreenShifted = True 
     ; shift buffer rows 1-20 to 0-19
-    ld hl,map_buffer+WINDOW_WIDTH
+    ld hl,map_backbuffer+WINDOW_WIDTH
     ld de,map_buffer
     ld bc,#(WINDOW_WIDTH*(WINDOW_HEIGHT-1))
     ldir 
@@ -171,7 +171,7 @@ ShiftWindowDown:
     call GetMapOffset_HL ; + (128*19)
     push hl 
     ; add hl+mapwidth * window height to get bottom row 
-    ld a,(MapWidth)
+    ld a,(MapWidth) ; 20 
     dec a           ; minimum width 2 ;)
     ld b,a 
     ld c,0
@@ -226,6 +226,7 @@ GetMapOffset_HL:
     jr z,.ofone 
     cp 0 
     jr z,.ofzer
+    dec a
     ld b,a 
     ld a,(MapWidth)
     ld l,a 
@@ -247,13 +248,11 @@ GetMapOffset_HL:
     ld e,a 
     ld d,0              ; DE = mapwdith
     .ofzer:
-    ld hl,map1
-    add hl,de           ; + map addr
-    ;ret 
-    ;ld hl,map1 
+    ld hl,map1 
+    add hl,de
     ld a,(MapOffsetX)   ; + x offs
     ld c,a 
     ld b,0
-    add hl,bc 
+    add hl,bc ; map1 + xofs 
     ret 
 ;;;;

@@ -140,21 +140,21 @@ COPY_MapWindow2Buffer:
 	ld c,a 
 	ld b,0 
 	sbc hl,bc 
-	ld bc,#40
+	ld bc,#WINDOW_WIDTH
 	add hl,bc 
 	pop de 
-	ld bc,#(20<<8)
+	ld bc,#(WINDOW_HEIGHT<<8)
 	.mapbuffercopylp:
 	push bc 
 	push hl 
 	ld h,0
 	ld a,(MapWidth)
 	ld l,a 
-	ld bc,#40
+	ld bc,#WINDOW_WIDTH
 	sbc hl,bc 	
 	pop bc 
 	add hl,bc  	; hl += width-40
-	ld bc,#40
+	ld bc,#WINDOW_WIDTH
 	ldir 
 	pop bc  
 	djnz .mapbuffercopylp
