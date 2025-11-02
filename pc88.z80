@@ -106,29 +106,6 @@ ExpandedGVRAM_Off: .macro
 	SetIOReg EXPANDED_GVRAM_CTRL, #(0x0)
 .endm
 
-DrawTile: .macro TileNo, Dest
-	ld de,&Dest
-	ld hl,#(tileset + (64*&TileNo))
-	call DRAW_TileFromDisk
-.endm
-
-TileToBuffer: .macro Src, Dst
-	ld hl,&Src ; 0xc000
-	ld de,%Dst ; 0xfe80
-	call DRAW_Tile2Buffer
-.endm 
-
-ShiftLeftBC: .macro 
-	sla c 
-	rl b 
-.endm
-
-CopyMapWindowToBuffer: .macro Map, Buffer 
-	ld hl,&Map 
-	ld de,&Buffer 
-	call COPY_MapWindow2Buffer 
-.endm 
-
 SetVBL: .macro 	
 	SetIOReg IRQ_LEVEL_SET, 2 
 	SetIOReg IRQ_MASK, 2

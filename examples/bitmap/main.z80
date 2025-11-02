@@ -1,0 +1,121 @@
+;; main.z80 
+.include "../../pc88.z80"
+
+.org $100 
+
+main:
+	di
+    
+    ld hl,$C000
+	ld de,CHRDATA
+
+	SETBANK_RED
+
+	ld c,$12
+LOP2:	ld b,$04
+LOP1:	ld a,(de)
+	ld (hl),a
+	inc hl
+	inc de
+	dec b
+	jr nz,LOP1
+	push bc
+	ld bc,$004c
+	add hl, bc
+	pop bc
+	dec c
+	jr nz,LOP2
+
+	SETBANK_MAINRAM
+	
+    ei
+
+Loop: jp Loop 
+
+CHRDATA:
+	.db 00
+	.db 00
+	.db 00
+	.db 00
+
+	.db 00
+	.db 07H
+	.db 0e0h
+	.db 00
+
+	.db 00
+	.db 0ch
+	.db 30h
+	.db 00
+
+	.db 00
+	.db 1ch
+	.db 38h
+	.db 00
+
+	.db 00
+	.db 3ch
+	.db 3ch
+	.db 00
+
+	.db 00
+	.db 7dh
+	.db 0beh
+	.db 00
+
+	.db 00
+	.db 86h
+	.db 61h
+	.db 00
+
+	.db 00
+	.db 89h
+	.db 91h
+	.db 00
+
+	.db 00
+	.db 89h
+	.db 91h
+	.db 00
+
+	.db 00
+	.db 86h
+	.db 61h
+	.db 00
+
+	.db 00
+	.db 0feh
+	.db 7eh
+	.db 00
+
+	.db 00
+	.db 7dh
+	.db 0beh
+	.db 00
+
+	.db 00
+	.db 3ch
+	.db 3ch
+	.db 00
+
+	.db 00
+	.db 1ch
+	.db 38h
+	.db 00
+
+	.db 00
+	.db 0ch
+	.db 30h
+	.db 00h
+
+	.db 00
+	.db 07h
+	.db 0e0h
+	.db 00
+
+	.db 00
+	.db 00
+	.db 00
+	.db 00
+
+_end:
