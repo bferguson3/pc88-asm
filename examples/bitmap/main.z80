@@ -1,4 +1,5 @@
 ;; main.z80 
+; contributed by Toshi1500
 .include "../../pc88.z80"
 
 .org $100 
