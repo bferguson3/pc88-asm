@@ -1,0 +1,110 @@
+;; main.z80 
+.include "../../pc88.z80"
+
+.org $100 
+
+main:
+	di
+
+	; ALU on!
+    EnableALU 0
+	ExpandedGVRAM_On ; dont forget to enable expanded gvram access.
+	
+	ld b,40 
+	ld c,140
+	; set tgt and src 
+    ld de,$C000-1
+	ld hl,bitmap-1
+	; draw loop 
+_nextPx:
+	push bc 
+	inc hl 
+	inc de 
+	ld c,EXPANDED_ALU_CTRL
+	; load the pixel 
+	ld a,(hl)
+	push af 
+	Downshift4	; first pixel 
+	out (c),a 	; mask it in the ALU 
+	ld a,(de) 	; load all planes into virtual accumulator
+	and bit7  	; this only ANDs the color we have masked! how handy!
+	ld (de),a 	; rewrite series of 8 pixels, first done 
+	pop af 	  	; second pixel
+	and $f
+	out (c),a 
+	ld a,(de)
+	and bit6 
+	ld (de),a   ; same process, 2nd done
+	inc hl 		; next
+	ld a,(hl)
+	push af 	; save 
+	Downshift4	; pixel 3
+	out (c),a 	; 
+	ld a,(de) 	; 
+	and bit5  	; 
+	ld (de),a 	; 
+	pop af 	  	; restore 
+	and $f
+	out (c),a 
+	ld a,(de)
+	and bit4 	; pixel 4
+	ld (de),a   ; rewrite
+	inc hl 		; next
+	ld a,(hl)
+	push af 	; save 
+	Downshift4	; pixel 5
+	out (c),a 	; 
+	ld a,(de) 	; 
+	and bit3  	; 
+	ld (de),a 	; 
+	pop af 	  	; restore 
+	and $f
+	out (c),a 
+	ld a,(de)
+	and bit2 	; pixel 6
+	ld (de),a   ; rewrite
+	inc hl 		; next
+	ld a,(hl)
+	push af 	; save 
+	Downshift4	; pixel 7
+	out (c),a 	; 
+	ld a,(de) 	; 
+	and bit1  	; 
+	ld (de),a 	; 
+	pop af 	  	; restore 
+	and $f
+	out (c),a 
+	ld a,(de)
+	and bit0 	; pixel 8
+	ld (de),a   ; rewrite
+	; ok, 8 pixels have been written
+	; next pixel. are we at 80?
+	pop bc
+	dec b 
+	jr z,_nxtRow 
+	jp _nextPx
+_nxtRow:
+	ld b,40
+	dec c 
+	push hl 
+	push de 
+	pop hl 
+	ld de,40 
+	add hl,de 
+	push hl 
+	pop de 
+	pop hl 
+	jp nz,_nextPx
+
+	DisableALU 0 
+	SETBANK_MAINRAM
+
+    ei
+
+Loop: 
+	jp Loop 
+
+bitmap: 
+	incbin "img.bin"
+
+_end:
