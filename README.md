@@ -3,6 +3,7 @@
 This is a continuation of [PC88-C](https://github.com/bferguson3/pc88-c), meant to be a more universal, and faster, method of developing games in pure z80 assembly for the PC8801+ series of Japanese computers. 
 <b>
 <br>PC88-C has been relegated to ON HIATUS thanks to the nonstop changes and bugs introduced into SDCC post version 4.0.</b><br>
+If you have questions, contact bent86 on discord.
 <br>
 To use:<br>
 ** Requires zasm (https://github.com/Megatokio/zasm) to be on the path or root folder.<br>
