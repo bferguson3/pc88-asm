@@ -22,6 +22,7 @@ This is identical to: "python3 ./tools/maked88.py app.d88 ./examples/tilemap/map
 <br>
 <br>
 References:<br>
-https://github.com/RetroDevDaemon/pc88-c/blob/main/src/pc88-c.h<br>
+https://github.com/bferguson3/pc88-c/blob/main/src/pc88-c.h<br>
+http://www.maroon.dti.ne.jp/youkan/pc88/disksub.html disk subsystem <br>
 http://mydocuments.g2.xrea.com/<br>
 http://www.maroon.dti.ne.jp/youkan/pc88/index.html<br>
